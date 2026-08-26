@@ -323,6 +323,60 @@ export class Store {
     });
   }
 
+  async getStats(project?: string): Promise<{
+    conversations: number;
+    fileEvents: number;
+    memories: number;
+    byType: Record<string, number>;
+    dbSizeBytes: number;
+  }> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+
+    const countTable = (table: string): number => {
+      let sql = `SELECT COUNT(*) FROM ${table}`;
+      const params: BindParams = [];
+      if (project) {
+        sql += " WHERE project = ?";
+        params.push(project);
+      }
+      const r = this.db!.exec(sql, params);
+      return (r[0]?.values[0][0] as number) ?? 0;
+    };
+
+    const byType: Record<string, number> = {};
+    let typeSql = "SELECT type, COUNT(*) as c FROM memories";
+    const typeParams: BindParams = [];
+    if (project) {
+      typeSql += " WHERE project = ?";
+      typeParams.push(project);
+    }
+    typeSql += " GROUP BY type";
+    const typeRows = this.db.exec(typeSql, typeParams);
+    for (const row of typeRows) {
+      for (const v of row.values) {
+        byType[v[0] as string] = v[1] as number;
+      }
+    }
+
+    let dbSizeBytes = 0;
+    try {
+      dbSizeBytes = fs.existsSync(this.dbPath)
+        ? fs.statSync(this.dbPath).size
+        : 0;
+    } catch {
+      dbSizeBytes = 0;
+    }
+
+    return {
+      conversations: countTable("conversations"),
+      fileEvents: countTable("file_events"),
+      memories: countTable("memories"),
+      byType,
+      dbSizeBytes,
+    };
+  }
+
   async getMemories(type?: string, limit: number = 50, project?: string): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");

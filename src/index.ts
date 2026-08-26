@@ -198,6 +198,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["id"],
         },
       },
+      {
+        name: "get_stats",
+        description: "获取数据库统计信息（对话/文件事件/记忆数量）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project: {
+              type: "string",
+              description: "项目名称（可选）",
+            },
+          },
+        },
+      },
     ],
   };
 });
@@ -364,6 +377,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: deleted ? `记忆 ${id} 已删除` : `未找到记忆 ${id}`,
+          },
+        ],
+      };
+    }
+
+    case "get_stats": {
+      const { project } = (args as ProjectArgs) || {};
+      const stats = await store.getStats(project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(stats, null, 2),
           },
         ],
       };
