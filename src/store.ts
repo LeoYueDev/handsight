@@ -443,4 +443,65 @@ export class Store {
     stmt.free();
     return results;
   }
+
+  async getAllConversations(project?: string): Promise<ConversationEvent[]> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+    let sql = "SELECT * FROM conversations";
+    const params: BindParams = [];
+    if (project) {
+      sql += " WHERE project = ?";
+      params.push(project);
+    }
+    sql += " ORDER BY timestamp ASC";
+    const stmt = this.db.prepare(sql);
+    stmt.bind(params);
+    const results: ConversationEvent[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as unknown as ConversationEvent);
+    }
+    stmt.free();
+    return results;
+  }
+
+  async getAllFileEvents(project?: string): Promise<FileEvent[]> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+    let sql = "SELECT * FROM file_events";
+    const params: BindParams = [];
+    if (project) {
+      sql += " WHERE project = ?";
+      params.push(project);
+    }
+    sql += " ORDER BY timestamp ASC";
+    const stmt = this.db.prepare(sql);
+    stmt.bind(params);
+    const results: FileEvent[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as unknown as FileEvent);
+    }
+    stmt.free();
+    return results;
+  }
+
+  async exportData(project?: string): Promise<{
+    exportedAt: number;
+    project: string | null;
+    conversations: ConversationEvent[];
+    fileEvents: FileEvent[];
+    memories: Memory[];
+  }> {
+    const [conversations, fileEvents, memories] = await Promise.all([
+      this.getAllConversations(project),
+      this.getAllFileEvents(project),
+      this.getMemories(undefined, 100000, project),
+    ]);
+    return {
+      exportedAt: Date.now(),
+      project: project || null,
+      conversations,
+      fileEvents,
+      memories,
+    };
+  }
 }

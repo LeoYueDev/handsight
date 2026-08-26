@@ -245,6 +245,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["query"],
         },
       },
+      {
+        name: "export_data",
+        description: "导出指定项目的全部数据（对话、文件事件、记忆）为 JSON",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project: {
+              type: "string",
+              description: "项目名称（可选，不传则导出全部）",
+            },
+          },
+        },
+      },
     ],
   };
 });
@@ -443,6 +456,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(memories, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "export_data": {
+      const { project } = (args as ProjectArgs) || {};
+      const data = await store.exportData(project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(data, null, 2),
           },
         ],
       };
