@@ -41,6 +41,13 @@ interface DeleteMemoryArgs {
   id: number;
 }
 
+interface SearchMemoriesArgs {
+  query: string;
+  type?: "preference" | "pattern" | "decision" | "context";
+  limit?: number;
+  project?: string;
+}
+
 const server = new Server(
   {
     name: "hindsight",
@@ -209,6 +216,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "项目名称（可选）",
             },
           },
+        },
+      },
+      {
+        name: "search_memories",
+        description: "按关键词搜索记忆内容",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "搜索关键词",
+            },
+            type: {
+              type: "string",
+              enum: ["preference", "pattern", "decision", "context"],
+              description: "记忆类型过滤（可选）",
+            },
+            limit: {
+              type: "number",
+              description: "返回数量限制（默认 50）",
+            },
+            project: {
+              type: "string",
+              description: "项目名称（可选）",
+            },
+          },
+          required: ["query"],
         },
       },
     ],
@@ -390,6 +424,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(stats, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "search_memories": {
+      if (!args || typeof args !== 'object' || !('query' in args)) {
+        throw new Error("Missing required parameter: query");
+      }
+      const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
+      if (typeof query !== 'string' || query.trim() === '') {
+        throw new Error("Invalid query: must be a non-empty string");
+      }
+      const memories = await store.searchMemories(query, type, limit, project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(memories, null, 2),
           },
         ],
       };

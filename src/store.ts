@@ -408,4 +408,39 @@ export class Store {
     stmt.free();
     return results;
   }
+
+  async searchMemories(
+    query: string,
+    type?: string,
+    limit: number = 50,
+    project?: string
+  ): Promise<Memory[]> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+
+    let sql = "SELECT * FROM memories";
+    const conditions: string[] = ["content LIKE ?"];
+    const params: BindParams = [`%${query}%`];
+    if (type) {
+      conditions.push("type = ?");
+      params.push(type);
+    }
+    if (project) {
+      conditions.push("project = ?");
+      params.push(project);
+    }
+    sql += " WHERE " + conditions.join(" AND ");
+    sql += " ORDER BY timestamp DESC LIMIT ?";
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    stmt.bind(params);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as unknown as Memory);
+    }
+    stmt.free();
+    return results;
+  }
 }
