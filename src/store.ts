@@ -309,6 +309,20 @@ export class Store {
     return results;
   }
 
+  async deleteMemory(id: number): Promise<boolean> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+      const before = this.db.getRowsModified?.() ?? 0;
+      this.db.run("DELETE FROM memories WHERE id = ?", [id]);
+      const affected = this.db.getRowsModified?.() ?? 0;
+      if (affected > before) {
+        this.scheduleSave();
+      }
+      return affected > before;
+    });
+  }
+
   async getMemories(type?: string, limit: number = 50, project?: string): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");

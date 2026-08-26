@@ -37,6 +37,10 @@ interface ProjectArgs {
   project?: string;
 }
 
+interface DeleteMemoryArgs {
+  id: number;
+}
+
 const server = new Server(
   {
     name: "hindsight",
@@ -178,6 +182,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "项目名称（可选）",
             },
           },
+        },
+      },
+      {
+        name: "delete_memory",
+        description: "删除指定 ID 的记忆",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: {
+              type: "number",
+              description: "要删除的记忆 ID",
+            },
+          },
+          required: ["id"],
         },
       },
     ],
@@ -326,6 +344,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: "用户画像已刷新",
+          },
+        ],
+      };
+    }
+
+    case "delete_memory": {
+      if (!args || typeof args !== 'object' || !('id' in args)) {
+        throw new Error("Missing required parameter: id");
+      }
+      const { id } = args as unknown as DeleteMemoryArgs;
+      if (typeof id !== 'number') {
+        throw new Error("Invalid id: must be a number");
+      }
+      const deleted = await store.deleteMemory(id);
+      await profiler.refreshProfile();
+      return {
+        content: [
+          {
+            type: "text",
+            text: deleted ? `记忆 ${id} 已删除` : `未找到记忆 ${id}`,
           },
         ],
       };
