@@ -504,4 +504,47 @@ export class Store {
       memories,
     };
   }
+
+  async clearOldData(olderThanDays: number, project?: string): Promise<{
+    deletedConversations: number;
+    deletedFileEvents: number;
+    deletedMemories: number;
+  }> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+      if (olderThanDays < 0) {
+        throw new Error("olderThanDays must be >= 0");
+      }
+      const cutoff = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+
+      const countDeleted = (table: string): number => {
+        const sql = project
+          ? `SELECT COUNT(*) FROM ${table} WHERE timestamp < ? AND project = ?`
+          : `SELECT COUNT(*) FROM ${table} WHERE timestamp < ?`;
+        const params: BindParams = project ? [cutoff, project] : [cutoff];
+        const r = this.db!.exec(sql, params);
+        return (r[0]?.values[0][0] as number) ?? 0;
+      };
+
+      const deletedConversations = countDeleted("conversations");
+      const deletedFileEvents = countDeleted("file_events");
+      const deletedMemories = countDeleted("memories");
+
+      const deleteFrom = (table: string) => {
+        const sql = project
+          ? `DELETE FROM ${table} WHERE timestamp < ? AND project = ?`
+          : `DELETE FROM ${table} WHERE timestamp < ?`;
+        const params: BindParams = project ? [cutoff, project] : [cutoff];
+        this.db!.run(sql, params);
+      };
+
+      deleteFrom("conversations");
+      deleteFrom("file_events");
+      deleteFrom("memories");
+
+      this.scheduleSave();
+      return { deletedConversations, deletedFileEvents, deletedMemories };
+    });
+  }
 }

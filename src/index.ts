@@ -48,6 +48,11 @@ interface SearchMemoriesArgs {
   project?: string;
 }
 
+interface ClearOldDataArgs {
+  olderThanDays: number;
+  project?: string;
+}
+
 const server = new Server(
   {
     name: "hindsight",
@@ -256,6 +261,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "项目名称（可选，不传则导出全部）",
             },
           },
+        },
+      },
+      {
+        name: "clear_old_data",
+        description: "清理指定天数之前的历史数据（对话、文件事件、记忆）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            olderThanDays: {
+              type: "number",
+              description: "清理多少天之前的数据（例如 30 表示清理 30 天前的数据）",
+            },
+            project: {
+              type: "string",
+              description: "项目名称（可选，不传则清理全部）",
+            },
+          },
+          required: ["olderThanDays"],
         },
       },
     ],
@@ -469,6 +492,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(data, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "clear_old_data": {
+      if (!args || typeof args !== 'object' || !('olderThanDays' in args)) {
+        throw new Error("Missing required parameter: olderThanDays");
+      }
+      const { olderThanDays, project } = args as unknown as ClearOldDataArgs;
+      if (typeof olderThanDays !== 'number' || olderThanDays < 0) {
+        throw new Error("Invalid olderThanDays: must be a non-negative number");
+      }
+      const result = await store.clearOldData(olderThanDays, project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `已清理 ${olderThanDays} 天前的数据：对话 ${result.deletedConversations} 条，文件事件 ${result.deletedFileEvents} 条，记忆 ${result.deletedMemories} 条`,
           },
         ],
       };
