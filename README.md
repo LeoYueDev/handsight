@@ -34,8 +34,8 @@
 
 ### 核心模块
 
-- **`src/index.ts`** — MCP 服务器入口，定义 7 个工具并处理请求路由
-- **`src/store.ts`** — SQLite 存储层，管理对话、文件事件和记忆的 CRUD
+- **`src/index.ts`** — MCP 服务器入口，定义 12 个工具并处理请求路由
+- **`src/store.ts`** — SQLite 存储层，管理对话、文件事件和记忆的 CRUD、搜索、导出与清理
 - **`src/profiler.ts`** — 画像生成器，从对话和文件事件中提取偏好、模式与决策
 - **`src/fileWatcher.ts`** — 基于 chokidar 的文件监控，过滤构建目录和临时文件
 - **`src/types.ts`** — TypeScript 类型定义（对话事件、文件事件、记忆、用户画像）
@@ -66,6 +66,8 @@ npm run build
 
 | 工具名 | 说明 | 必需参数 |
 |--------|------|----------|
+| 工具名 | 说明 | 必需参数 |
+|--------|------|----------|
 | `record_conversation` | 记录用户与 AI 的对话内容 | `role`, `content` |
 | `start_file_watching` | 开始监控指定目录的文件变化 | `path` |
 | `stop_file_watching` | 停止文件监控 | 无 |
@@ -73,6 +75,11 @@ npm run build
 | `get_memories` | 查询已存储的记忆（支持类型过滤） | 无 |
 | `add_memory` | 手动添加一条记忆 | `type`, `content` |
 | `refresh_profile` | 基于最新数据刷新用户画像 | 无 |
+| `delete_memory` | 按 ID 删除指定记忆 | `id` |
+| `get_stats` | 获取数据库统计（对话/文件事件/记忆数量） | 无 |
+| `search_memories` | 按关键词搜索记忆内容 | `query` |
+| `export_data` | 导出全部数据（对话、文件事件、记忆）为 JSON | 无 |
+| `clear_old_data` | 清理指定天数之前的历史数据 | `olderThanDays` |
 
 ### 记忆类型
 

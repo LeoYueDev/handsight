@@ -1,6 +1,6 @@
 {
   "name": "hindsight",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI memory MCP server that understands developers through their interactions",
   "type": "module",
   "main": "dist/index.js",
