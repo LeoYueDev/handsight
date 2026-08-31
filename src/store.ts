@@ -260,6 +260,30 @@ export class Store {
     return results;
   }
 
+  async getRecentConversations(limit: number = 20, project?: string): Promise<ConversationEvent[]> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+
+    let sql = "SELECT * FROM conversations";
+    const params: BindParams = [];
+    if (project) {
+      sql += " WHERE project = ?";
+      params.push(project);
+    }
+    sql += " ORDER BY timestamp DESC LIMIT ?";
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    stmt.bind(params);
+
+    const results: ConversationEvent[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as unknown as ConversationEvent);
+    }
+    stmt.free();
+    return results.reverse();
+  }
+
   async getFileEventsAfter(id: number, project?: string): Promise<FileEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");

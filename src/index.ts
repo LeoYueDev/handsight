@@ -37,6 +37,11 @@ interface ProjectArgs {
   project?: string;
 }
 
+interface GetRecentConversationsArgs {
+  limit?: number;
+  project?: string;
+}
+
 interface DeleteMemoryArgs {
   id: number;
 }
@@ -250,6 +255,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
+            project: {
+              type: "string",
+              description: "项目名称（可选）",
+            },
+          },
+        },
+      },
+      {
+        name: "get_recent_conversations",
+        description: "获取最近记录的对话内容",
+        inputSchema: {
+          type: "object",
+          properties: {
+            limit: {
+              type: "number",
+              description: "返回条数（默认 20）",
+            },
             project: {
               type: "string",
               description: "项目名称（可选）",
@@ -522,6 +544,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(stats, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "get_recent_conversations": {
+      const { limit = 20, project } = (args as GetRecentConversationsArgs) || {};
+      if (typeof limit !== 'number' || limit <= 0) {
+        throw new Error("Invalid limit: must be a positive number");
+      }
+      const conversations = await store.getRecentConversations(limit, project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(conversations, null, 2),
           },
         ],
       };
