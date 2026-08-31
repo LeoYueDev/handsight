@@ -80,6 +80,7 @@ const server = new Server(
 const store = new Store();
 const profiler = new Profiler(store);
 let fileWatcher: FileWatcher | null = null;
+const serverStartedAt = Date.now();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -335,6 +336,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ["olderThanDays"],
+        },
+      },
+      {
+        name: "health_check",
+        description: "检查服务器运行状态（运行时长、文件监控状态、数据库统计）",
+        inputSchema: {
+          type: "object",
+          properties: {},
         },
       },
     ],
@@ -611,6 +620,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: `已清理 ${olderThanDays} 天前的数据：对话 ${result.deletedConversations} 条，文件事件 ${result.deletedFileEvents} 条，记忆 ${result.deletedMemories} 条`,
+          },
+        ],
+      };
+    }
+
+    case "health_check": {
+      const uptimeSeconds = Math.round((Date.now() - serverStartedAt) / 1000);
+      const stats = await store.getStats();
+      const health = {
+        status: "ok",
+        version: "0.2.0",
+        uptimeSeconds,
+        fileWatching: fileWatcher ? "active" : "inactive",
+        dbSizeBytes: stats.dbSizeBytes,
+        totalMemories: stats.memories,
+        totalConversations: stats.conversations,
+        totalFileEvents: stats.fileEvents,
+      };
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(health, null, 2),
           },
         ],
       };
