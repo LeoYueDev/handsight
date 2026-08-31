@@ -323,6 +323,40 @@ export class Store {
     });
   }
 
+  async updateMemory(
+    id: number,
+    updates: { content?: string; confidence?: number; type?: Memory["type"] }
+  ): Promise<boolean> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+
+      const exists = this.db!.exec("SELECT id FROM memories WHERE id = ?", [id]);
+      if (exists.length === 0) return false;
+
+      const sets: string[] = [];
+      const params: BindParams = [];
+      if (updates.content !== undefined) {
+        sets.push("content = ?");
+        params.push(updates.content);
+      }
+      if (updates.confidence !== undefined) {
+        sets.push("confidence = ?");
+        params.push(updates.confidence);
+      }
+      if (updates.type !== undefined) {
+        sets.push("type = ?");
+        params.push(updates.type);
+      }
+      if (sets.length === 0) return true;
+
+      params.push(id);
+      this.db.run(`UPDATE memories SET ${sets.join(", ")} WHERE id = ?`, params);
+      this.scheduleSave();
+      return true;
+    });
+  }
+
   async getStats(project?: string): Promise<{
     conversations: number;
     fileEvents: number;

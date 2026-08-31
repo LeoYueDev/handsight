@@ -41,6 +41,13 @@ interface DeleteMemoryArgs {
   id: number;
 }
 
+interface UpdateMemoryArgs {
+  id: number;
+  content?: string;
+  confidence?: number;
+  type?: "preference" | "pattern" | "decision" | "context";
+}
+
 interface SearchMemoriesArgs {
   query: string;
   type?: "preference" | "pattern" | "decision" | "context";
@@ -205,6 +212,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             id: {
               type: "number",
               description: "要删除的记忆 ID",
+            },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "update_memory",
+        description: "更新指定 ID 记忆的内容、置信度或类型",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: {
+              type: "number",
+              description: "要更新的记忆 ID",
+            },
+            content: {
+              type: "string",
+              description: "新的记忆内容（可选）",
+            },
+            confidence: {
+              type: "number",
+              description: "新的置信度 0-1（可选）",
+            },
+            type: {
+              type: "string",
+              enum: ["preference", "pattern", "decision", "context"],
+              description: "新的记忆类型（可选）",
             },
           },
           required: ["id"],
@@ -447,6 +481,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: deleted ? `记忆 ${id} 已删除` : `未找到记忆 ${id}`,
+          },
+        ],
+      };
+    }
+
+    case "update_memory": {
+      if (!args || typeof args !== 'object' || !('id' in args)) {
+        throw new Error("Missing required parameter: id");
+      }
+      const { id, content, confidence, type } = args as unknown as UpdateMemoryArgs;
+      if (typeof id !== 'number') {
+        throw new Error("Invalid id: must be a number");
+      }
+      if (content !== undefined && typeof content !== 'string') {
+        throw new Error("Invalid content: must be a string");
+      }
+      if (confidence !== undefined && (typeof confidence !== 'number' || confidence < 0 || confidence > 1)) {
+        throw new Error("Invalid confidence: must be a number between 0 and 1");
+      }
+      const updated = await store.updateMemory(id, { content, confidence, type });
+      if (updated) {
+        await profiler.refreshProfile();
+      }
+      return {
+        content: [
+          {
+            type: "text",
+            text: updated ? `记忆 ${id} 已更新` : `未找到记忆 ${id}`,
           },
         ],
       };
