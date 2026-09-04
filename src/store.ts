@@ -190,6 +190,24 @@ export class Store {
     });
   }
 
+  async addConversations(events: ConversationEvent[]): Promise<number[]> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+      const ids: number[] = [];
+      for (const event of events) {
+        this.db.run(
+          "INSERT INTO conversations (timestamp, role, content, project) VALUES (?, ?, ?, ?)",
+          [event.timestamp, event.role, event.content, event.project || null]
+        );
+        const result = this.db.exec("SELECT last_insert_rowid()");
+        ids.push(result[0].values[0][0] as number);
+      }
+      this.scheduleSave();
+      return ids;
+    });
+  }
+
   async addFileEvent(event: FileEvent): Promise<number> {
     await this.initPromise;
     return this.withLock(() => {

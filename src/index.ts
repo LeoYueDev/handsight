@@ -15,6 +15,14 @@ interface RecordConversationArgs {
   project?: string;
 }
 
+interface BatchRecordConversationsArgs {
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+  }[];
+  project?: string;
+}
+
 interface FileWatchingArgs {
   path: string;
   project?: string;
@@ -115,6 +123,39 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ["role", "content"],
+        },
+      },
+      {
+        name: "batch_record_conversations",
+        description: "批量记录多条对话内容（一次调用写入多条消息）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            messages: {
+              type: "array",
+              description: "对话消息数组",
+              items: {
+                type: "object",
+                properties: {
+                  role: {
+                    type: "string",
+                    enum: ["user", "assistant"],
+                    description: "对话角色",
+                  },
+                  content: {
+                    type: "string",
+                    description: "对话内容",
+                  },
+                },
+                required: ["role", "content"],
+              },
+            },
+            project: {
+              type: "string",
+              description: "项目名称（可选）",
+            },
+          },
+          required: ["messages"],
         },
       },
       {
@@ -425,6 +466,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: `对话已记录 (ID: ${id})`,
+          },
+        ],
+      };
+    }
+
+    case "batch_record_conversations": {
+      if (!args || typeof args !== 'object' || !('messages' in args)) {
+        throw new Error("Missing required parameter: messages");
+      }
+      const { messages, project } = args as unknown as BatchRecordConversationsArgs;
+      if (!Array.isArray(messages) || messages.length === 0) {
+        throw new Error("Invalid messages: must be a non-empty array");
+      }
+      for (const m of messages) {
+        if (!m || (m.role !== 'user' && m.role !== 'assistant')) {
+          throw new Error("Invalid message: role must be 'user' or 'assistant'");
+        }
+        if (typeof m.content !== 'string') {
+          throw new Error("Invalid message: content must be a string");
+        }
+      }
+      const now = Date.now();
+      const ids = await store.addConversations(
+        messages.map((m, i) => ({
+          timestamp: now + i,
+          role: m.role,
+          content: m.content,
+          project,
+        }))
+      );
+      await profiler.refreshProfile(project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `已批量记录 ${ids.length} 条对话 (IDs: ${ids.join(", ")})`,
           },
         ],
       };
