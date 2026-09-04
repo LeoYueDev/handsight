@@ -42,6 +42,11 @@ interface GetRecentConversationsArgs {
   project?: string;
 }
 
+interface GetFileEventsArgs {
+  limit?: number;
+  project?: string;
+}
+
 interface DeleteMemoryArgs {
   id: number;
 }
@@ -272,6 +277,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             limit: {
               type: "number",
               description: "返回条数（默认 20）",
+            },
+            project: {
+              type: "string",
+              description: "项目名称（可选）",
+            },
+          },
+        },
+      },
+      {
+        name: "get_file_events",
+        description: "获取最近的文件变更事件（创建/修改/删除）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            limit: {
+              type: "number",
+              description: "返回条数（默认 100）",
             },
             project: {
               type: "string",
@@ -569,6 +591,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(conversations, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "get_file_events": {
+      const { limit = 100, project } = (args as GetFileEventsArgs) || {};
+      if (typeof limit !== 'number' || limit <= 0) {
+        throw new Error("Invalid limit: must be a positive number");
+      }
+      const fileEvents = await store.getRecentFileEvents(limit, project);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(fileEvents, null, 2),
           },
         ],
       };
