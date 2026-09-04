@@ -85,7 +85,7 @@ interface ClearOldDataArgs {
 const server = new Server(
   {
     name: "hindsight",
-    version: "0.2.0",
+        version: "0.3.0",
   },
   {
     capabilities: {
@@ -804,7 +804,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const stats = await store.getStats();
       const health = {
         status: "ok",
-        version: "0.2.0",
+    version: "0.3.0",
         uptimeSeconds,
         fileWatching: fileWatcher ? "active" : "inactive",
         dbSizeBytes: stats.dbSizeBytes,
