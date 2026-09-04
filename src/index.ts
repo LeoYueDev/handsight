@@ -303,6 +303,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "list_projects",
+        description: "列出所有有数据记录的项目及各项目的记录数量",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
         name: "search_memories",
         description: "按关键词搜索记忆内容",
         inputSchema: {
@@ -607,6 +615,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: JSON.stringify(fileEvents, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "list_projects": {
+      const projects = await store.listProjects();
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(projects, null, 2),
           },
         ],
       };

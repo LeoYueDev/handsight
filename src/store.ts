@@ -435,6 +435,46 @@ export class Store {
     };
   }
 
+  async listProjects(): Promise<{
+    project: string;
+    conversations: number;
+    fileEvents: number;
+    memories: number;
+  }[]> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+
+    const map = new Map<string, { conversations: number; fileEvents: number; memories: number }>();
+    const ensure = (p: string | null) => {
+      const key = p || "__global__";
+      if (!map.has(key)) {
+        map.set(key, { conversations: 0, fileEvents: 0, memories: 0 });
+      }
+      return map.get(key)!;
+    };
+
+    const aggregate = (table: "conversations" | "file_events" | "memories", field: "conversations" | "fileEvents" | "memories") => {
+      const rows = this.db!.exec(
+        `SELECT project, COUNT(*) as c FROM ${table} GROUP BY project`
+      );
+      for (const row of rows) {
+        for (const v of row.values) {
+          const proj = (v[0] as string | null) || null;
+          const count = (v[1] as number) ?? 0;
+          ensure(proj)[field] = count;
+        }
+      }
+    };
+
+    aggregate("conversations", "conversations");
+    aggregate("file_events", "fileEvents");
+    aggregate("memories", "memories");
+
+    return [...map.entries()]
+      .map(([project, counts]) => ({ project, ...counts }))
+      .sort((a, b) => (b.conversations + b.memories) - (a.conversations + a.memories));
+  }
+
   async getMemories(type?: string, limit: number = 50, project?: string): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
