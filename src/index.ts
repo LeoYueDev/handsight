@@ -51,6 +51,10 @@ interface DeleteMemoryArgs {
   id: number;
 }
 
+interface GetMemoryByIdArgs {
+  id: number;
+}
+
 interface UpdateMemoryArgs {
   id: number;
   content?: string;
@@ -250,6 +254,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "string",
               enum: ["preference", "pattern", "decision", "context"],
               description: "新的记忆类型（可选）",
+            },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "get_memory_by_id",
+        description: "根据 ID 获取单条记忆的详细内容",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: {
+              type: "number",
+              description: "要查询的记忆 ID",
             },
           },
           required: ["id"],
@@ -570,6 +588,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: "text",
             text: updated ? `记忆 ${id} 已更新` : `未找到记忆 ${id}`,
+          },
+        ],
+      };
+    }
+
+    case "get_memory_by_id": {
+      if (!args || typeof args !== 'object' || !('id' in args)) {
+        throw new Error("Missing required parameter: id");
+      }
+      const { id } = args as unknown as GetMemoryByIdArgs;
+      if (typeof id !== 'number') {
+        throw new Error("Invalid id: must be a number");
+      }
+      const memory = await store.getMemoryById(id);
+      return {
+        content: [
+          {
+            type: "text",
+            text: memory
+              ? JSON.stringify(memory, null, 2)
+              : `未找到记忆 ${id}`,
           },
         ],
       };

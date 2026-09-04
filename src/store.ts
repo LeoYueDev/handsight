@@ -350,8 +350,7 @@ export class Store {
   async updateMemory(
     id: number,
     updates: { content?: string; confidence?: number; type?: Memory["type"] }
-  ): Promise<boolean> {
-    await this.initPromise;
+  ): Promise<boolean> {    await this.initPromise;
     return this.withLock(() => {
       if (!this.db) throw new Error("Database not initialized");
 
@@ -505,6 +504,20 @@ export class Store {
     }
     stmt.free();
     return results;
+  }
+
+  async getMemoryById(id: number): Promise<Memory | null> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+
+    const rows = this.db.exec("SELECT * FROM memories WHERE id = ?", [id]);
+    if (rows.length === 0 || rows[0].values.length === 0) return null;
+
+    const cols = rows[0].columns;
+    const vals = rows[0].values[0];
+    const obj: Record<string, unknown> = {};
+    cols.forEach((c, i) => { obj[c] = vals[i]; });
+    return obj as unknown as Memory;
   }
 
   async searchMemories(
