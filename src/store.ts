@@ -4,7 +4,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 
-const DB_CLEANUP_DAYS = 30;
+const DEFAULT_RETENTION_DAYS = 30;
 const MAX_FILE_EVENTS = 10000;
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -15,6 +15,7 @@ export class Store {
   private writeLock: Promise<void> = Promise.resolve();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = false;
+  readonly retentionDays: number;
 
   constructor(projectDir?: string) {
     const dbDir = projectDir
@@ -24,6 +25,10 @@ export class Store {
       fs.mkdirSync(dbDir, { recursive: true });
     }
     this.dbPath = path.join(dbDir, "hindsight.db");
+    const envDays = Number(process.env.HINDSIGHT_RETENTION_DAYS);
+    this.retentionDays = Number.isFinite(envDays) && envDays >= 0
+      ? Math.floor(envDays)
+      : DEFAULT_RETENTION_DAYS;
     this.initPromise = this.init();
   }
 
@@ -158,7 +163,7 @@ export class Store {
   private async cleanup() {
     if (!this.db) return;
     
-    const cutoff = Date.now() - DB_CLEANUP_DAYS * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - this.retentionDays * 24 * 60 * 60 * 1000;
     
     this.db.run("DELETE FROM conversations WHERE timestamp < ?", [cutoff]);
     this.db.run("DELETE FROM file_events WHERE timestamp < ?", [cutoff]);
