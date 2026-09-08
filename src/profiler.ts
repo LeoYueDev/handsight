@@ -240,7 +240,7 @@ export class Profiler {
     fileEvents: { path: string; action: string; timestamp: number }[]
   ): { area: string; files: string[]; changes: string[] }[] {
     const recentFiles = fileEvents.slice(0, 20);
-    const dirGroups = new Map<string, string[]>();
+    const dirGroups = new Map<string, { path: string; action: string }[]>();
 
     for (const f of recentFiles) {
       const parts = f.path.split(/[\\/]/);
@@ -248,16 +248,24 @@ export class Profiler {
       if (!dirGroups.has(dir)) {
         dirGroups.set(dir, []);
       }
-      dirGroups.get(dir)!.push(f.path);
+      dirGroups.get(dir)!.push({ path: f.path, action: f.action });
     }
+
+    const verbFor = (action: string): string => {
+      switch (action) {
+        case "create": return "created";
+        case "delete": return "deleted";
+        default: return "modified";
+      }
+    };
 
     const contexts: { area: string; files: string[]; changes: string[] }[] = [];
     for (const [dir, files] of dirGroups) {
       if (files.length >= 2) {
         contexts.push({
           area: dir,
-          files: files.slice(0, 5),
-          changes: files.map((f) => `${f.split(/[\\/]/).pop()} modified`),
+          files: files.slice(0, 5).map((f) => f.path),
+          changes: files.map((f) => `${f.path.split(/[\\/]/).pop()} ${verbFor(f.action)}`),
         });
       }
     }
