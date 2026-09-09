@@ -32,6 +32,7 @@ interface GetMemoriesArgs {
   type?: "preference" | "pattern" | "decision" | "context";
   limit?: number;
   project?: string;
+  minConfidence?: number;
 }
 
 interface AddMemoryArgs {
@@ -211,6 +212,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             limit: {
               type: "number",
               description: "返回数量限制（默认 50）",
+            },
+            minConfidence: {
+              type: "number",
+              description: "最低置信度过滤 0-1（可选）",
             },
             project: {
               type: "string",
@@ -567,8 +572,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "get_memories": {
-      const { type, limit = 50, project } = (args as GetMemoriesArgs) || {};
-      const memories = await store.getMemories(type, limit, project);
+      const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
+      if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
+        throw new Error("Invalid minConfidence: must be a number between 0 and 1");
+      }
+      const memories = await store.getMemories(type, limit, project, minConfidence);
       return {
         content: [
           {

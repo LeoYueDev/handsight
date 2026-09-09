@@ -497,7 +497,12 @@ export class Store {
       .sort((a, b) => (b.conversations + b.memories) - (a.conversations + a.memories));
   }
 
-  async getMemories(type?: string, limit: number = 50, project?: string): Promise<Memory[]> {
+  async getMemories(
+    type?: string,
+    limit: number = 50,
+    project?: string,
+    minConfidence?: number
+  ): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
     
@@ -511,6 +516,10 @@ export class Store {
     if (project) {
       conditions.push("project = ?");
       params.push(project);
+    }
+    if (minConfidence !== undefined) {
+      conditions.push("confidence >= ?");
+      params.push(minConfidence);
     }
     if (conditions.length > 0) {
       sql += " WHERE " + conditions.join(" AND ");
