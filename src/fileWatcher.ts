@@ -9,6 +9,8 @@ export class FileWatcher {
   private errorCount = 0;
   private maxErrors = 10;
   private errorResetTimer: NodeJS.Timeout | null = null;
+  private pausedUntil = 0;
+  private static readonly ERROR_COOLDOWN_MS = 60000;
 
   constructor(watchPath: string, store: Store, project?: string) {
     this.watchPath = watchPath;
@@ -56,9 +58,13 @@ export class FileWatcher {
   }
 
   private handleEvent(action: "create" | "modify" | "delete", path: string) {
-    if (this.errorCount >= this.maxErrors) {
-      console.error(`FileWatcher: too many errors, stopping event recording for: ${path}`);
-      return;
+    if (this.pausedUntil > 0) {
+      if (Date.now() < this.pausedUntil) {
+        return;
+      }
+      this.pausedUntil = 0;
+      this.errorCount = 0;
+      console.error("FileWatcher: cooldown elapsed, resuming event recording");
     }
 
     this.store.addFileEvent({
@@ -79,7 +85,8 @@ export class FileWatcher {
       console.error(`Failed to record file event (${this.errorCount}/${this.maxErrors}):`, err);
       
       if (this.errorCount >= this.maxErrors) {
-        console.error("FileWatcher: database may be unavailable, pausing event recording");
+        this.pausedUntil = Date.now() + FileWatcher.ERROR_COOLDOWN_MS;
+        console.error("FileWatcher: database may be unavailable, pausing event recording for 60s");
         return;
       }
 
