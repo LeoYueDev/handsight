@@ -686,6 +686,12 @@ export class Store {
       deleteFrom("file_events");
       deleteFrom("memories");
 
+      const totalDeleted =
+        deletedConversations + deletedFileEvents + deletedMemories;
+      if (totalDeleted > 0) {
+        this.db.run("VACUUM");
+      }
+
       this.scheduleSave();
       return { deletedConversations, deletedFileEvents, deletedMemories };
     });
