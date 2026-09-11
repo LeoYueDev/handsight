@@ -27,6 +27,7 @@ export interface Memory {
 export interface UserProfile {
   preferences: Record<string, string>;
   patterns: Record<string, string>;
+  decisions: string[];
   recentContext: {
     area: string;
     files: string[];

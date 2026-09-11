@@ -84,6 +84,14 @@ export class Profiler {
       hindsightSection += `\n`;
     }
 
+    if (profile.decisions.length > 0) {
+      hindsightSection += `### Decisions\n\n`;
+      for (const decision of profile.decisions) {
+        hindsightSection += `- ${decision}\n`;
+      }
+      hindsightSection += `\n`;
+    }
+
     if (profile.recentContext.length > 0) {
       hindsightSection += `### Recent Context\n\n`;
       for (const ctx of profile.recentContext) {
@@ -113,16 +121,19 @@ export class Profiler {
 
     const preferences: Record<string, string> = {};
     const patterns: Record<string, string> = {};
+    const decisions: string[] = [];
 
     for (const m of memories) {
       const parsed = this.parseMemoryContent(m.content);
-      if (!parsed) continue;
 
-      if (m.type === "preference") {
+      if (m.type === "preference" && parsed) {
         preferences[parsed.key] = parsed.value;
       }
-      if (m.type === "pattern") {
+      if (m.type === "pattern" && parsed) {
         patterns[parsed.key] = parsed.value;
+      }
+      if (m.type === "decision" && m.content.trim()) {
+        decisions.push(m.content.trim());
       }
     }
 
@@ -131,6 +142,7 @@ export class Profiler {
     return {
       preferences,
       patterns,
+      decisions: [...new Set(decisions)].slice(-20),
       recentContext,
       lastUpdated: Date.now(),
     };
