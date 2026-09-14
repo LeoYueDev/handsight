@@ -83,10 +83,12 @@ interface ClearOldDataArgs {
   project?: string;
 }
 
+const HINDSIGHT_VERSION = "0.3.0";
+
 const server = new Server(
   {
     name: "hindsight",
-        version: "0.3.0",
+    version: HINDSIGHT_VERSION,
   },
   {
     capabilities: {
@@ -812,7 +814,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const stats = await store.getStats();
       const health = {
         status: "ok",
-    version: "0.3.0",
+        version: HINDSIGHT_VERSION,
         uptimeSeconds,
         fileWatching: fileWatcher ? "active" : "inactive",
         retentionDays: store.retentionDays,
