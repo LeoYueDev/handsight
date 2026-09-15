@@ -23,6 +23,7 @@ export class FileWatcher {
       ignored: [
         "**/node_modules/**",
         "**/.git/**",
+        "**/.hindsight/**",
         "**/dist/**",
         "**/build/**",
         "**/.next/**",
