@@ -233,7 +233,26 @@ export class Store {
     await this.initPromise;
     return this.withLock(() => {
       if (!this.db) throw new Error("Database not initialized");
-      
+
+      const findExisting = (): number | null => {
+        const sql = memory.project
+          ? "SELECT id FROM memories WHERE content = ? AND project = ?"
+          : "SELECT id FROM memories WHERE content = ? AND project IS NULL";
+        const params: BindParams = memory.project
+          ? [memory.content, memory.project]
+          : [memory.content];
+        const rows = this.db!.exec(sql, params);
+        if (rows.length > 0 && rows[0].values.length > 0) {
+          return rows[0].values[0][0] as number;
+        }
+        return null;
+      };
+
+      const existingId = findExisting();
+      if (existingId !== null) {
+        return existingId;
+      }
+
       try {
         this.db.run(
           "INSERT INTO memories (timestamp, type, content, confidence, source, project) VALUES (?, ?, ?, ?, ?, ?)",
@@ -245,12 +264,9 @@ export class Store {
         return result[0].values[0][0] as number;
       } catch (err) {
         if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
-          const existing = this.db.exec(
-            "SELECT id FROM memories WHERE content = ? AND project IS ?",
-            [memory.content, memory.project || null]
-          );
-          if (existing.length > 0) {
-            return existing[0].values[0][0] as number;
+          const racedId = findExisting();
+          if (racedId !== null) {
+            return racedId;
           }
         }
         throw err;
