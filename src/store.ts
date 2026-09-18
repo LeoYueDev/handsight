@@ -376,13 +376,12 @@ export class Store {
     await this.initPromise;
     return this.withLock(() => {
       if (!this.db) throw new Error("Database not initialized");
-      const before = this.db.getRowsModified?.() ?? 0;
       this.db.run("DELETE FROM memories WHERE id = ?", [id]);
       const affected = this.db.getRowsModified?.() ?? 0;
-      if (affected > before) {
+      if (affected > 0) {
         this.scheduleSave();
       }
-      return affected > before;
+      return affected > 0;
     });
   }
 
