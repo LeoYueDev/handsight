@@ -230,7 +230,7 @@ export class Profiler {
       const sorted = [...fileTypes.entries()].sort((a, b) => b[1] - a[1]);
       const topTypes = sorted.slice(0, 3).map(([ext, count]) => `${ext}(${count})`).join(", ");
       const content = `primary_file_types: ${topTypes}`;
-      await this.store.addMemory({ timestamp: Date.now(), type: "pattern", content, confidence: 0.6, source: "file_events", project });
+      await this.store.replaceMemoryByPrefix("primary_file_types:", { timestamp: Date.now(), type: "pattern", content, confidence: 0.6, source: "file_events", project });
     }
 
     const dirs = new Set<string>();
@@ -242,7 +242,7 @@ export class Profiler {
     }
     if (dirs.size > 0) {
       const content = `active_directories: ${[...dirs].slice(0, 5).join(", ")}`;
-      await this.store.addMemory({ timestamp: Date.now(), type: "context", content, confidence: 0.5, source: "file_events", project });
+      await this.store.replaceMemoryByPrefix("active_directories:", { timestamp: Date.now(), type: "context", content, confidence: 0.5, source: "file_events", project });
     }
 
     return processedIds;

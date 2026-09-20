@@ -274,6 +274,32 @@ export class Store {
     });
   }
 
+  async replaceMemoryByPrefix(prefix: string, memory: Memory): Promise<number> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+
+      const escapedPrefix = prefix.replace(/[\\%_]/g, "\\$&");
+      const likePattern = `${escapedPrefix}%`;
+      const deleteSql = memory.project
+        ? "DELETE FROM memories WHERE content LIKE ? ESCAPE '\\' AND project = ?"
+        : "DELETE FROM memories WHERE content LIKE ? ESCAPE '\\' AND project IS NULL";
+      const deleteParams: BindParams = memory.project
+        ? [likePattern, memory.project]
+        : [likePattern];
+      this.db.run(deleteSql, deleteParams);
+
+      this.db.run(
+        "INSERT INTO memories (timestamp, type, content, confidence, source, project) VALUES (?, ?, ?, ?, ?, ?)",
+        [memory.timestamp, memory.type, memory.content, memory.confidence, memory.source, memory.project || null]
+      );
+      this.scheduleSave();
+
+      const result = this.db.exec("SELECT last_insert_rowid()");
+      return result[0].values[0][0] as number;
+    });
+  }
+
   async getConversationsAfter(id: number, project?: string): Promise<ConversationEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
