@@ -8,7 +8,6 @@ export class FileWatcher {
   private project?: string;
   private errorCount = 0;
   private maxErrors = 10;
-  private errorResetTimer: NodeJS.Timeout | null = null;
   private pausedUntil = 0;
   private static readonly ERROR_COOLDOWN_MS = 60000;
 
@@ -76,10 +75,6 @@ export class FileWatcher {
     }).then(() => {
       if (this.errorCount > 0) {
         this.errorCount = 0;
-        if (this.errorResetTimer) {
-          clearTimeout(this.errorResetTimer);
-          this.errorResetTimer = null;
-        }
       }
     }).catch((err) => {
       this.errorCount++;
@@ -90,14 +85,6 @@ export class FileWatcher {
         console.error("FileWatcher: database may be unavailable, pausing event recording for 60s");
         return;
       }
-
-      if (!this.errorResetTimer) {
-        this.errorResetTimer = setTimeout(() => {
-          this.errorCount = 0;
-          this.errorResetTimer = null;
-          console.error("FileWatcher: error count reset after 60s");
-        }, 60000);
-      }
     });
   }
 
@@ -106,10 +93,6 @@ export class FileWatcher {
       this.watcher.close();
       this.watcher = null;
       console.error("FileWatcher stopped");
-    }
-    if (this.errorResetTimer) {
-      clearTimeout(this.errorResetTimer);
-      this.errorResetTimer = null;
     }
   }
 }
