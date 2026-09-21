@@ -9,6 +9,9 @@ import { Store } from "./store.js";
 import { FileWatcher } from "./fileWatcher.js";
 import { Profiler } from "./profiler.js";
 
+const MAX_CONTENT_LENGTH = 64 * 1024;
+const MAX_BATCH_MESSAGES = 1000;
+
 interface RecordConversationArgs {
   role: "user" | "assistant";
   content: string;
@@ -461,6 +464,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (typeof content !== 'string') {
         throw new Error("Invalid content: must be a string");
       }
+      if (content.length > MAX_CONTENT_LENGTH) {
+        throw new Error(`Invalid content: must be at most ${MAX_CONTENT_LENGTH} bytes`);
+      }
       const id = await store.addConversation({
         timestamp: Date.now(),
         role,
@@ -486,12 +492,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!Array.isArray(messages) || messages.length === 0) {
         throw new Error("Invalid messages: must be a non-empty array");
       }
+      if (messages.length > MAX_BATCH_MESSAGES) {
+        throw new Error(`Invalid messages: must be at most ${MAX_BATCH_MESSAGES} items`);
+      }
       for (const m of messages) {
         if (!m || (m.role !== 'user' && m.role !== 'assistant')) {
           throw new Error("Invalid message: role must be 'user' or 'assistant'");
         }
         if (typeof m.content !== 'string') {
           throw new Error("Invalid message: content must be a string");
+        }
+        if (m.content.length > MAX_CONTENT_LENGTH) {
+          throw new Error(`Invalid message: content must be at most ${MAX_CONTENT_LENGTH} bytes`);
         }
       }
       const now = Date.now();
