@@ -604,7 +604,8 @@ export class Store {
 
     let sql = "SELECT * FROM memories";
     const conditions: string[] = ["content LIKE ?"];
-    const params: BindParams = [`%${query}%`];
+    const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
+    const params: BindParams = [`%${escapedQuery}%`];
     if (type) {
       conditions.push("type = ?");
       params.push(type);
