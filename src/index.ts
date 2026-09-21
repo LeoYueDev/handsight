@@ -575,6 +575,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_memories": {
       const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
+      if (limit <= 0 || limit > 1000) {
+        throw new Error("Invalid limit: must be between 1 and 1000");
+      }
       if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
         throw new Error("Invalid minConfidence: must be a number between 0 and 1");
       }
@@ -765,6 +768,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
       if (typeof query !== 'string' || query.trim() === '') {
         throw new Error("Invalid query: must be a non-empty string");
+      }
+      if (limit <= 0 || limit > 1000) {
+        throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const memories = await store.searchMemories(query, type, limit, project);
       return {
