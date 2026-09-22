@@ -11,6 +11,7 @@ import { Profiler } from "./profiler.js";
 
 const MAX_CONTENT_LENGTH = 64 * 1024;
 const MAX_BATCH_MESSAGES = 1000;
+const MAX_QUERY_LENGTH = 256;
 
 interface RecordConversationArgs {
   role: "user" | "assistant";
@@ -778,8 +779,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: query");
       }
       const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
-      if (typeof query !== 'string' || query.trim() === '') {
+       if (typeof query !== 'string' || query.trim() === '') {
         throw new Error("Invalid query: must be a non-empty string");
+      }
+      if (query.length > MAX_QUERY_LENGTH) {
+        throw new Error(`Invalid query: must be at most ${MAX_QUERY_LENGTH} characters`);
       }
       if (limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
