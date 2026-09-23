@@ -109,6 +109,14 @@ npm run build
 - **自动清理**：30 天前的记录自动删除，文件事件上限 10,000 条
 - **自动保存**：数据库变更每 500ms 异步刷盘
 
+## 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `HINDSIGHT_DATA_DIR` | 数据库存储目录 | `~/.hindsight` |
+| `HINDSIGHT_CONFIG_DIR` | 配置文件目录（AGENTS.md） | `~/.config/opencode` |
+| `HINDSIGHT_RETENTION_DAYS` | 数据保留天数 | `30` |
+
 ## 开发
 
 ```bash
