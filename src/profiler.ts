@@ -116,7 +116,7 @@ export class Profiler {
   }
 
   private async buildProfile(project?: string): Promise<UserProfile> {
-    const memories = await this.store.getMemories(undefined, 10000, project);
+    const memories = await this.store.getMemories(undefined, 1000, project);
     const recentFiles = await this.store.getRecentFileEvents(100, project);
 
     const preferences: Record<string, string> = {};
