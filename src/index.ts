@@ -610,6 +610,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameters: type, content");
       }
       const { type, content, confidence = 0.8, project } = args as unknown as AddMemoryArgs;
+      if (!["preference", "pattern", "decision", "context"].includes(type)) {
+        throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
+      }
       if (typeof content !== 'string') {
         throw new Error("Invalid content: must be a string");
       }
@@ -675,6 +678,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { id, content, confidence, type } = args as unknown as UpdateMemoryArgs;
       if (typeof id !== 'number') {
         throw new Error("Invalid id: must be a number");
+      }
+      if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
+        throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
       if (content !== undefined && typeof content !== 'string') {
         throw new Error("Invalid content: must be a string");
