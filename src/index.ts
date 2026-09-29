@@ -8,6 +8,7 @@ import {
 import { Store } from "./store.js";
 import { FileWatcher } from "./fileWatcher.js";
 import { Profiler } from "./profiler.js";
+import fs from "fs";
 
 const MAX_CONTENT_LENGTH = 64 * 1024;
 const MAX_BATCH_MESSAGES = 1000;
@@ -532,8 +533,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: path");
       }
       const { path: watchPath, project } = args as unknown as FileWatchingArgs;
-      if (typeof watchPath !== 'string') {
-        throw new Error("Invalid path: must be a string");
+      if (typeof watchPath !== 'string' || watchPath.trim() === '') {
+        throw new Error("Invalid path: must be a non-empty string");
+      }
+      if (!fs.existsSync(watchPath)) {
+        throw new Error(`Invalid path: directory does not exist: ${watchPath}`);
+      }
+      if (!fs.statSync(watchPath).isDirectory()) {
+        throw new Error(`Invalid path: not a directory: ${watchPath}`);
       }
       if (fileWatcher) {
         fileWatcher.stop();
