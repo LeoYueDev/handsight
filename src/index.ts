@@ -620,8 +620,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
-      if (typeof content !== 'string') {
-        throw new Error("Invalid content: must be a string");
+      if (typeof content !== 'string' || content.trim() === '') {
+        throw new Error("Invalid content: must be a non-empty string");
+      }
+      if (content.length > MAX_CONTENT_LENGTH) {
+        throw new Error(`Invalid content: must be at most ${MAX_CONTENT_LENGTH} bytes`);
       }
       if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
         throw new Error("Invalid confidence: must be a number between 0 and 1");
@@ -689,8 +692,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
-      if (content !== undefined && typeof content !== 'string') {
-        throw new Error("Invalid content: must be a string");
+      if (content !== undefined && (typeof content !== 'string' || content.trim() === '')) {
+        throw new Error("Invalid content: must be a non-empty string");
+      }
+      if (content !== undefined && content.length > MAX_CONTENT_LENGTH) {
+        throw new Error(`Invalid content: must be at most ${MAX_CONTENT_LENGTH} bytes`);
       }
       if (confidence !== undefined && (typeof confidence !== 'number' || confidence < 0 || confidence > 1)) {
         throw new Error("Invalid confidence: must be a number between 0 and 1");
