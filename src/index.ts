@@ -463,8 +463,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (role !== 'user' && role !== 'assistant') {
         throw new Error("Invalid role: must be 'user' or 'assistant'");
       }
-      if (typeof content !== 'string') {
-        throw new Error("Invalid content: must be a string");
+      if (typeof content !== 'string' || content.trim() === '') {
+        throw new Error("Invalid content: must be a non-empty string");
       }
       if (content.length > MAX_CONTENT_LENGTH) {
         throw new Error(`Invalid content: must be at most ${MAX_CONTENT_LENGTH} bytes`);
@@ -501,8 +501,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!m || (m.role !== 'user' && m.role !== 'assistant')) {
           throw new Error("Invalid message: role must be 'user' or 'assistant'");
         }
-        if (typeof m.content !== 'string') {
-          throw new Error("Invalid message: content must be a string");
+        if (typeof m.content !== 'string' || m.content.trim() === '') {
+          throw new Error("Invalid message: content must be a non-empty string");
         }
         if (m.content.length > MAX_CONTENT_LENGTH) {
           throw new Error(`Invalid message: content must be at most ${MAX_CONTENT_LENGTH} bytes`);
