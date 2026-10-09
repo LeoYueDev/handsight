@@ -16,6 +16,7 @@ export class Store {
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = false;
   readonly retentionDays: number;
+  readonly maxFileEvents: number;
 
   constructor(projectDir?: string) {
     const dbDir = projectDir
@@ -29,6 +30,10 @@ export class Store {
     this.retentionDays = Number.isFinite(envDays) && envDays >= 0
       ? Math.floor(envDays)
       : DEFAULT_RETENTION_DAYS;
+    const envMaxEvents = Number(process.env.HINDSIGHT_MAX_FILE_EVENTS);
+    this.maxFileEvents = Number.isFinite(envMaxEvents) && envMaxEvents > 0
+      ? Math.floor(envMaxEvents)
+      : MAX_FILE_EVENTS;
     this.initPromise = this.init();
   }
 
@@ -171,8 +176,8 @@ export class Store {
     
     const countResult = this.db.exec("SELECT COUNT(*) FROM file_events");
     const count = countResult[0]?.values[0][0] as number;
-    if (count > MAX_FILE_EVENTS) {
-      const excess = count - MAX_FILE_EVENTS;
+    if (count > this.maxFileEvents) {
+      const excess = count - this.maxFileEvents;
       this.db.run(`DELETE FROM file_events WHERE id IN (SELECT id FROM file_events ORDER BY timestamp ASC LIMIT ?)`, [excess]);
     }
     
