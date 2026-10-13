@@ -859,6 +859,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         uptimeSeconds,
         fileWatching: fileWatcher ? "active" : "inactive",
         retentionDays: store.retentionDays,
+        maxFileEvents: store.maxFileEvents,
         dbSizeBytes: stats.dbSizeBytes,
         totalMemories: stats.memories,
         totalConversations: stats.conversations,

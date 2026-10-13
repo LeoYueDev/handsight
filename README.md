@@ -116,6 +116,7 @@ npm run build
 | `HINDSIGHT_DATA_DIR` | 数据库存储目录 | `~/.hindsight` |
 | `HINDSIGHT_CONFIG_DIR` | 配置文件目录（AGENTS.md） | `~/.config/opencode` |
 | `HINDSIGHT_RETENTION_DAYS` | 数据保留天数 | `30` |
+| `HINDSIGHT_MAX_FILE_EVENTS` | 文件事件保留上限 | `10000` |
 
 ## 开发
 
