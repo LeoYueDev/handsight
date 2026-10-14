@@ -11,6 +11,7 @@ const SAVE_DEBOUNCE_MS = 500;
 export class Store {
   private db: Database | null = null;
   private dbPath: string;
+  private lockPath: string;
   private initPromise: Promise<void>;
   private writeLock: Promise<void> = Promise.resolve();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -26,6 +27,7 @@ export class Store {
       fs.mkdirSync(dbDir, { recursive: true });
     }
     this.dbPath = path.join(dbDir, "hindsight.db");
+    this.lockPath = path.join(dbDir, "hindsight.lock");
     const envDays = Number(process.env.HINDSIGHT_RETENTION_DAYS);
     this.retentionDays = Number.isFinite(envDays) && envDays >= 0
       ? Math.floor(envDays)
@@ -37,7 +39,63 @@ export class Store {
     this.initPromise = this.init();
   }
 
+  private async isPidAlive(pid: number): Promise<boolean> {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err) {
+      return (err as NodeJS.ErrnoException).code === "EPERM";
+    }
+  }
+
+  /**
+   * 独占数据目录锁：sql.js 是整文件导出覆盖写，多实例共享同一 DB 会互相覆盖。
+   * 锁文件存在时，若持有者进程已死则接管（崩溃残留），否则拒绝启动。
+   */
+  private async acquireLock(): Promise<void> {
+    const lockInfo = JSON.stringify({ pid: process.pid, startedAt: Date.now() });
+    try {
+      fs.writeFileSync(this.lockPath, lockInfo, { flag: "wx" });
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw err;
+      }
+    }
+
+    let holderPid: number | null = null;
+    try {
+      const raw = fs.readFileSync(this.lockPath, "utf-8");
+      holderPid = (JSON.parse(raw) as { pid?: number }).pid ?? null;
+    } catch {
+      holderPid = null;
+    }
+
+    if (holderPid !== null && holderPid !== process.pid && (await this.isPidAlive(holderPid))) {
+      throw new Error(
+        `Another Hindsight instance (PID ${holderPid}) is already using this data directory. ` +
+        `Multiple instances sharing one DB will overwrite each other's data.`
+      );
+    }
+
+    console.error(
+      holderPid === null
+        ? `Hindsight: found unreadable lock file, overwriting`
+        : `Hindsight: reclaimed stale lock from dead PID ${holderPid}`
+    );
+    fs.writeFileSync(this.lockPath, lockInfo);
+  }
+
+  releaseLock(): void {
+    try {
+      fs.unlinkSync(this.lockPath);
+    } catch {
+      // 锁已被清理或非本进程持有，忽略
+    }
+  }
+
   private async init() {
+    await this.acquireLock();
     const SQL = await initSqlJs();
     
     if (fs.existsSync(this.dbPath)) {
@@ -170,6 +228,7 @@ export class Store {
       this.db.close();
       this.db = null;
     }
+    this.releaseLock();
   }
 
   private async cleanup() {
