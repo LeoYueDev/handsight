@@ -751,8 +751,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_recent_conversations": {
       const { limit = 20, project } = (args as GetRecentConversationsArgs) || {};
-      if (typeof limit !== 'number' || limit <= 0) {
-        throw new Error("Invalid limit: must be a positive number");
+      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+        throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const conversations = await store.getRecentConversations(limit, project);
       return {
@@ -767,8 +767,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_file_events": {
       const { limit = 100, project } = (args as GetFileEventsArgs) || {};
-      if (typeof limit !== 'number' || limit <= 0) {
-        throw new Error("Invalid limit: must be a positive number");
+      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+        throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const fileEvents = await store.getRecentFileEvents(limit, project);
       return {
