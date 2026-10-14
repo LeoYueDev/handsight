@@ -27,9 +27,35 @@ export class Profiler {
   private lastRefresh = new Map<string, number>();
   private lastProcessedConvId = new Map<string, number>();
   private lastProcessedFileId = new Map<string, number>();
+  private cursorsLoaded = new Set<string>();
 
   constructor(store: Store) {
     this.store = store;
+  }
+
+  private static convCursorKey(projectKey: string): string {
+    return `cursor:conv:${projectKey}`;
+  }
+
+  private static fileCursorKey(projectKey: string): string {
+    return `cursor:file:${projectKey}`;
+  }
+
+  private async ensureCursorsLoaded(projectKey: string): Promise<void> {
+    if (this.cursorsLoaded.has(projectKey)) return;
+    const [conv, file] = await Promise.all([
+      this.store.getMeta(Profiler.convCursorKey(projectKey)),
+      this.store.getMeta(Profiler.fileCursorKey(projectKey)),
+    ]);
+    const convId = conv ? Number(conv) : 0;
+    const fileId = file ? Number(file) : 0;
+    if (Number.isFinite(convId) && convId >= 0) {
+      this.lastProcessedConvId.set(projectKey, convId);
+    }
+    if (Number.isFinite(fileId) && fileId >= 0) {
+      this.lastProcessedFileId.set(projectKey, fileId);
+    }
+    this.cursorsLoaded.add(projectKey);
   }
 
   async getProfile(project?: string): Promise<UserProfile> {
@@ -161,6 +187,7 @@ export class Profiler {
 
   private async extractMemories(project?: string): Promise<void> {
     const projectKey = project || "__global__";
+    await this.ensureCursorsLoaded(projectKey);
     const convId = this.lastProcessedConvId.get(projectKey) || 0;
     const fileId = this.lastProcessedFileId.get(projectKey) || 0;
     
@@ -171,10 +198,14 @@ export class Profiler {
     const newFileIds = await this.extractFromFileEvents(fileEvents, project);
 
     if (newConvIds.length > 0) {
-      this.lastProcessedConvId.set(projectKey, Math.max(...newConvIds));
+      const maxId = Math.max(...newConvIds);
+      this.lastProcessedConvId.set(projectKey, maxId);
+      await this.store.setMeta(Profiler.convCursorKey(projectKey), String(maxId));
     }
     if (newFileIds.length > 0) {
-      this.lastProcessedFileId.set(projectKey, Math.max(...newFileIds));
+      const maxId = Math.max(...newFileIds);
+      this.lastProcessedFileId.set(projectKey, maxId);
+      await this.store.setMeta(Profiler.fileCursorKey(projectKey), String(maxId));
     }
   }
 

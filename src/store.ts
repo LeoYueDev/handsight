@@ -69,6 +69,13 @@ export class Store {
 
     this.migrateMemoriesTable();
 
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `);
+
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_conv_timestamp ON conversations(timestamp)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_file_timestamp ON file_events(timestamp)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memories(timestamp)`);
@@ -741,6 +748,26 @@ export class Store {
 
       this.scheduleSave();
       return { deletedConversations, deletedFileEvents, deletedMemories };
+    });
+  }
+
+  async getMeta(key: string): Promise<string | null> {
+    await this.initPromise;
+    if (!this.db) throw new Error("Database not initialized");
+    const rows = this.db.exec("SELECT value FROM meta WHERE key = ?", [key]);
+    if (rows.length === 0 || rows[0].values.length === 0) return null;
+    return rows[0].values[0][0] as string;
+  }
+
+  async setMeta(key: string, value: string): Promise<void> {
+    await this.initPromise;
+    return this.withLock(() => {
+      if (!this.db) throw new Error("Database not initialized");
+      this.db.run(
+        "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [key, value]
+      );
+      this.scheduleSave();
     });
   }
 }
