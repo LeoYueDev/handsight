@@ -19,6 +19,8 @@ const DECISION_PATTERNS = [
   "decided to use", "chose", "going with", "we'll use",
 ];
 
+const PROFILE_CACHE_TTL_MS = 30000;
+
 export class Profiler {
   private store: Store;
   private cachedProfiles = new Map<string, UserProfile>();
@@ -33,7 +35,7 @@ export class Profiler {
   async getProfile(project?: string): Promise<UserProfile> {
     const key = project || "__global__";
     const lastRefresh = this.lastRefresh.get(key) || 0;
-    if (Date.now() - lastRefresh < 30000) {
+    if (Date.now() - lastRefresh < PROFILE_CACHE_TTL_MS) {
       const cached = this.cachedProfiles.get(key);
       if (cached) return cached;
     }
