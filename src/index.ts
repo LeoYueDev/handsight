@@ -475,7 +475,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content,
         project,
       });
-      await profiler.refreshProfile(project);
+      profiler.scheduleRefresh(project);
       return {
         content: [
           {
@@ -517,7 +517,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           project,
         }))
       );
-      await profiler.refreshProfile(project);
+      profiler.scheduleRefresh(project);
       return {
         content: [
           {
@@ -637,7 +637,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         source: "manual",
         project,
       });
-      await profiler.refreshProfile(project);
+      profiler.scheduleRefresh(project);
       return {
         content: [
           {
@@ -670,7 +670,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Invalid id: must be a number");
       }
       const deleted = await store.deleteMemory(id);
-      await profiler.refreshProfile();
+      profiler.scheduleRefresh();
       return {
         content: [
           {
@@ -703,7 +703,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       const updated = await store.updateMemory(id, { content, confidence, type });
       if (updated) {
-        await profiler.refreshProfile();
+        profiler.scheduleRefresh();
       }
       return {
         content: [
@@ -887,6 +887,7 @@ async function main() {
 }
 
 function shutdown() {
+  profiler.cancelPendingRefreshes();
   if (fileWatcher) {
     fileWatcher.stop();
     fileWatcher = null;

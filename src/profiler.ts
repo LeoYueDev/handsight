@@ -20,6 +20,7 @@ const DECISION_PATTERNS = [
 ];
 
 const PROFILE_CACHE_TTL_MS = 30000;
+const PROFILE_REFRESH_DEBOUNCE_MS = 5000;
 
 export class Profiler {
   private store: Store;
@@ -28,6 +29,7 @@ export class Profiler {
   private lastProcessedConvId = new Map<string, number>();
   private lastProcessedFileId = new Map<string, number>();
   private cursorsLoaded = new Set<string>();
+  private pendingRefresh = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(store: Store) {
     this.store = store;
@@ -60,6 +62,12 @@ export class Profiler {
 
   async getProfile(project?: string): Promise<UserProfile> {
     const key = project || "__global__";
+    const pending = this.pendingRefresh.get(key);
+    if (pending) {
+      clearTimeout(pending);
+      this.pendingRefresh.delete(key);
+      await this.refreshProfile(project);
+    }
     const lastRefresh = this.lastRefresh.get(key) || 0;
     if (Date.now() - lastRefresh < PROFILE_CACHE_TTL_MS) {
       const cached = this.cachedProfiles.get(key);
@@ -72,12 +80,41 @@ export class Profiler {
   }
 
   async refreshProfile(project?: string): Promise<void> {
+    const key = project || "__global__";
+    const pending = this.pendingRefresh.get(key);
+    if (pending) {
+      clearTimeout(pending);
+      this.pendingRefresh.delete(key);
+    }
     await this.extractMemories(project);
     const profile = await this.buildProfile(project);
-    const key = project || "__global__";
     this.cachedProfiles.set(key, profile);
     this.lastRefresh.set(key, Date.now());
     await this.updateAgentsMd(profile);
+  }
+
+  /**
+   * 防抖调度画像刷新：短时间内的连续写入（如逐条记录对话）合并为一次刷新，
+   * 避免高频写入路径同步阻塞在提取+重建+磁盘 IO 上。
+   */
+  scheduleRefresh(project?: string): void {
+    const key = project || "__global__";
+    const existing = this.pendingRefresh.get(key);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.pendingRefresh.delete(key);
+      this.refreshProfile(project).catch((err) => {
+        console.error("Debounced profile refresh failed:", err);
+      });
+    }, PROFILE_REFRESH_DEBOUNCE_MS);
+    this.pendingRefresh.set(key, timer);
+  }
+
+  cancelPendingRefreshes(): void {
+    for (const timer of this.pendingRefresh.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingRefresh.clear();
   }
 
   private async updateAgentsMd(profile: UserProfile): Promise<void> {
