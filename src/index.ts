@@ -9,6 +9,7 @@ import { Store } from "./store.js";
 import { FileWatcher } from "./fileWatcher.js";
 import { Profiler } from "./profiler.js";
 import fs from "fs";
+import path from "path";
 
 const MAX_CONTENT_LENGTH = 64 * 1024;
 const MAX_BATCH_MESSAGES = 1000;
@@ -104,7 +105,7 @@ const server = new Server(
 
 const store = new Store();
 const profiler = new Profiler(store);
-let fileWatcher: FileWatcher | null = null;
+const fileWatchers = new Map<string, FileWatcher>();
 const serverStartedAt = Date.now();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -168,7 +169,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "start_file_watching",
-        description: "开始监控指定目录的文件变化",
+        description: "开始监控指定目录的文件变化（可同时监控多个目录）",
         inputSchema: {
           type: "object",
           properties: {
@@ -186,10 +187,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "stop_file_watching",
-        description: "停止文件监控",
+        description: "停止文件监控（指定 path 则只停该目录，不指定则停止全部）",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            path: {
+              type: "string",
+              description: "要停止监控的目录路径（可选，不传则停止全部）",
+            },
+          },
         },
       },
       {
@@ -542,39 +548,76 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!fs.statSync(watchPath).isDirectory()) {
         throw new Error(`Invalid path: not a directory: ${watchPath}`);
       }
-      if (fileWatcher) {
-        fileWatcher.stop();
+      const resolved = path.resolve(watchPath);
+      if (fileWatchers.has(resolved)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `目录已在监控中: ${resolved}`,
+            },
+          ],
+        };
       }
-      fileWatcher = new FileWatcher(watchPath, store, project);
-      fileWatcher.start();
+      const watcher = new FileWatcher(resolved, store, project);
+      watcher.start();
+      fileWatchers.set(resolved, watcher);
       return {
         content: [
           {
             type: "text",
-            text: `开始监控目录: ${watchPath}`,
+            text: `开始监控目录: ${resolved}（当前共监控 ${fileWatchers.size} 个目录）`,
           },
         ],
       };
     }
 
     case "stop_file_watching": {
-      if (fileWatcher) {
-        fileWatcher.stop();
-        fileWatcher = null;
+      const { path: stopPath } = (args as { path?: string }) || {};
+      if (stopPath) {
+        const resolved = path.resolve(stopPath);
+        const watcher = fileWatchers.get(resolved);
+        if (!watcher) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `该目录未在监控中: ${resolved}`,
+              },
+            ],
+          };
+        }
+        watcher.stop();
+        fileWatchers.delete(resolved);
         return {
           content: [
             {
               type: "text",
-              text: "文件监控已停止",
+              text: `已停止监控目录: ${resolved}（剩余 ${fileWatchers.size} 个）`,
             },
           ],
         };
       }
+      if (fileWatchers.size === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "没有正在运行的文件监控",
+            },
+          ],
+        };
+      }
+      const count = fileWatchers.size;
+      for (const watcher of fileWatchers.values()) {
+        watcher.stop();
+      }
+      fileWatchers.clear();
       return {
         content: [
           {
             type: "text",
-            text: "没有正在运行的文件监控",
+            text: `已停止全部 ${count} 个目录的文件监控`,
           },
         ],
       };
@@ -857,7 +900,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         status: "ok",
         version: HINDSIGHT_VERSION,
         uptimeSeconds,
-        fileWatching: fileWatcher ? "active" : "inactive",
+        fileWatching: fileWatchers.size > 0 ? `${fileWatchers.size} active` : "inactive",
         retentionDays: store.retentionDays,
         maxFileEvents: store.maxFileEvents,
         dbSizeBytes: stats.dbSizeBytes,
@@ -888,10 +931,10 @@ async function main() {
 
 function shutdown() {
   profiler.cancelPendingRefreshes();
-  if (fileWatcher) {
-    fileWatcher.stop();
-    fileWatcher = null;
+  for (const watcher of fileWatchers.values()) {
+    watcher.stop();
   }
+  fileWatchers.clear();
   store.shutdown();
   process.exit(0);
 }
