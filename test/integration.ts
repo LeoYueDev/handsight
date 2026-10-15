@@ -83,6 +83,38 @@ async function main() {
   });
   console.log("  Result:", (r6.content as any)[0].text);
 
+  console.log("\n=== Test: start_file_watching ===");
+  const watchDir = path.join(testDir, "watched");
+  fs.mkdirSync(watchDir, { recursive: true });
+  const r7 = await client.callTool({
+    name: "start_file_watching",
+    arguments: { path: watchDir, project: "watch-test" },
+  });
+  console.log("  Result:", (r7.content as any)[0].text);
+
+  console.log("\n=== Test: 文件变更触发事件记录 ===");
+  fs.writeFileSync(path.join(watchDir, "created.ts"), "const a = 1;");
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  fs.writeFileSync(path.join(watchDir, "created.ts"), "const a = 2;");
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  fs.rmSync(path.join(watchDir, "created.ts"));
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  const r8 = await client.callTool({
+    name: "get_file_events",
+    arguments: { project: "watch-test", limit: 50 },
+  });
+  const events = JSON.parse((r8.content as any)[0].text) as any[];
+  const actions = new Set(events.map((e) => e.action));
+  console.log(`  捕获 ${events.length} 条事件, actions: ${[...actions].join(", ")}`);
+  if (!actions.has("create") || !actions.has("modify") || !actions.has("delete")) {
+    throw new Error(`文件监控事件缺失, 实际捕获 actions: ${[...actions].join(", ")}`);
+  }
+
+  console.log("\n=== Test: stop_file_watching ===");
+  const r9 = await client.callTool({ name: "stop_file_watching", arguments: {} });
+  console.log("  Result:", (r9.content as any)[0].text);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
