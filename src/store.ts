@@ -589,7 +589,8 @@ export class Store {
   }
 
   async listProjects(): Promise<{
-    project: string;
+    project: string | null;
+    isGlobal: boolean;
     conversations: number;
     fileEvents: number;
     memories: number;
@@ -624,7 +625,11 @@ export class Store {
     aggregate("memories", "memories");
 
     return [...map.entries()]
-      .map(([project, counts]) => ({ project, ...counts }))
+      .map(([key, counts]) => ({
+        project: key === "__global__" ? null : key,
+        isGlobal: key === "__global__",
+        ...counts,
+      }))
       .sort((a, b) => (b.conversations + b.memories) - (a.conversations + a.memories));
   }
 

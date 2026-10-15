@@ -381,7 +381,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_projects",
-        description: "列出所有有数据记录的项目及各项目的记录数量",
+        description: "列出所有有数据记录的项目及各项目的记录数量（project 为 null 表示全局数据）",
         inputSchema: {
           type: "object",
           properties: {},
