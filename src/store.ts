@@ -6,6 +6,8 @@ import fs from "fs";
 
 const DEFAULT_RETENTION_DAYS = 30;
 const MAX_FILE_EVENTS = 10000;
+const MAX_CONVERSATIONS = 10000;
+const MAX_MEMORIES = 5000;
 const SAVE_DEBOUNCE_MS = 500;
 
 export class Store {
@@ -18,6 +20,8 @@ export class Store {
   private dirty = false;
   readonly retentionDays: number;
   readonly maxFileEvents: number;
+  readonly maxConversations: number;
+  readonly maxMemories: number;
 
   constructor(projectDir?: string) {
     const dbDir = projectDir
@@ -36,6 +40,14 @@ export class Store {
     this.maxFileEvents = Number.isFinite(envMaxEvents) && envMaxEvents > 0
       ? Math.floor(envMaxEvents)
       : MAX_FILE_EVENTS;
+    const envMaxConv = Number(process.env.HINDSIGHT_MAX_CONVERSATIONS);
+    this.maxConversations = Number.isFinite(envMaxConv) && envMaxConv > 0
+      ? Math.floor(envMaxConv)
+      : MAX_CONVERSATIONS;
+    const envMaxMem = Number(process.env.HINDSIGHT_MAX_MEMORIES);
+    this.maxMemories = Number.isFinite(envMaxMem) && envMaxMem > 0
+      ? Math.floor(envMaxMem)
+      : MAX_MEMORIES;
     this.initPromise = this.init();
   }
 
@@ -239,15 +251,22 @@ export class Store {
     this.db.run("DELETE FROM conversations WHERE timestamp < ?", [cutoff]);
     this.db.run("DELETE FROM file_events WHERE timestamp < ?", [cutoff]);
     this.db.run("DELETE FROM memories WHERE timestamp < ?", [cutoff]);
-    
-    const countResult = this.db.exec("SELECT COUNT(*) FROM file_events");
-    const count = countResult[0]?.values[0][0] as number;
-    if (count > this.maxFileEvents) {
-      const excess = count - this.maxFileEvents;
-      this.db.run(`DELETE FROM file_events WHERE id IN (SELECT id FROM file_events ORDER BY timestamp ASC LIMIT ?)`, [excess]);
-    }
+
+    this.truncateTable("conversations", this.maxConversations);
+    this.truncateTable("file_events", this.maxFileEvents);
+    this.truncateTable("memories", this.maxMemories);
     
     this.scheduleSave();
+  }
+
+  private truncateTable(table: "conversations" | "file_events" | "memories", maxRows: number): void {
+    if (!this.db) return;
+    const countResult = this.db.exec(`SELECT COUNT(*) FROM ${table}`);
+    const count = countResult[0]?.values[0][0] as number;
+    if (count > maxRows) {
+      const excess = count - maxRows;
+      this.db.run(`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} ORDER BY timestamp ASC LIMIT ?)`, [excess]);
+    }
   }
 
   async addConversation(event: ConversationEvent): Promise<number> {

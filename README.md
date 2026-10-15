@@ -106,7 +106,7 @@ npm run build
 
 - **数据库**：`~/.hindsight/hindsight.db`（SQLite，通过 sql.js 运行）
 - **用户画像**：`~/.config/opencode/AGENTS.md`（HINDSIGHT 标记区间自动更新）
-- **自动清理**：30 天前的记录自动删除，文件事件上限 10,000 条
+- **自动清理**：过期记录（默认 30 天前）自动删除，并按条数上限截断最旧数据（对话 10,000 / 文件事件 10,000 / 记忆 5,000）
 - **自动保存**：数据库变更每 500ms 异步刷盘
 
 ## 环境变量
@@ -117,6 +117,8 @@ npm run build
 | `HINDSIGHT_CONFIG_DIR` | 配置文件目录（AGENTS.md） | `~/.config/opencode` |
 | `HINDSIGHT_RETENTION_DAYS` | 数据保留天数 | `30` |
 | `HINDSIGHT_MAX_FILE_EVENTS` | 文件事件保留上限 | `10000` |
+| `HINDSIGHT_MAX_CONVERSATIONS` | 对话记录保留上限 | `10000` |
+| `HINDSIGHT_MAX_MEMORIES` | 记忆保留上限 | `5000` |
 
 ## 开发
 

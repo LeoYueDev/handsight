@@ -903,6 +903,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         fileWatching: fileWatchers.size > 0 ? `${fileWatchers.size} active` : "inactive",
         retentionDays: store.retentionDays,
         maxFileEvents: store.maxFileEvents,
+        maxConversations: store.maxConversations,
+        maxMemories: store.maxMemories,
         dbSizeBytes: stats.dbSizeBytes,
         totalMemories: stats.memories,
         totalConversations: stats.conversations,
