@@ -637,7 +637,8 @@ export class Store {
     type?: string,
     limit: number = 50,
     project?: string,
-    minConfidence?: number
+    minConfidence?: number,
+    offset: number = 0
   ): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
@@ -660,8 +661,8 @@ export class Store {
     if (conditions.length > 0) {
       sql += " WHERE " + conditions.join(" AND ");
     }
-    sql += " ORDER BY timestamp DESC LIMIT ?";
-    params.push(limit);
+    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
     
     const stmt = this.db.prepare(sql);
     stmt.bind(params);
@@ -724,7 +725,7 @@ export class Store {
     return results;
   }
 
-  async getAllConversations(project?: string): Promise<ConversationEvent[]> {
+  async getAllConversations(project?: string, offset?: number, limit?: number): Promise<ConversationEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
     let sql = "SELECT * FROM conversations";
@@ -734,6 +735,10 @@ export class Store {
       params.push(project);
     }
     sql += " ORDER BY timestamp ASC";
+    if (limit !== undefined) {
+      sql += " LIMIT ? OFFSET ?";
+      params.push(limit, offset ?? 0);
+    }
     const stmt = this.db.prepare(sql);
     stmt.bind(params);
     const results: ConversationEvent[] = [];
@@ -744,7 +749,7 @@ export class Store {
     return results;
   }
 
-  async getAllFileEvents(project?: string): Promise<FileEvent[]> {
+  async getAllFileEvents(project?: string, offset?: number, limit?: number): Promise<FileEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
     let sql = "SELECT * FROM file_events";
@@ -754,6 +759,10 @@ export class Store {
       params.push(project);
     }
     sql += " ORDER BY timestamp ASC";
+    if (limit !== undefined) {
+      sql += " LIMIT ? OFFSET ?";
+      params.push(limit, offset ?? 0);
+    }
     const stmt = this.db.prepare(sql);
     stmt.bind(params);
     const results: FileEvent[] = [];
@@ -764,21 +773,51 @@ export class Store {
     return results;
   }
 
-  async exportData(project?: string): Promise<{
+  async exportData(
+    project?: string,
+    options?: {
+      include?: ("conversations" | "fileEvents" | "memories")[];
+      offset?: number;
+      limit?: number;
+    }
+  ): Promise<{
     exportedAt: number;
     project: string | null;
+    include: ("conversations" | "fileEvents" | "memories")[];
+    offset: number;
+    limit: number | null;
+    counts: { conversations: number; fileEvents: number; memories: number };
     conversations: ConversationEvent[];
     fileEvents: FileEvent[];
     memories: Memory[];
   }> {
+    const ALL: ("conversations" | "fileEvents" | "memories")[] = [
+      "conversations",
+      "fileEvents",
+      "memories",
+    ];
+    const include = options?.include && options.include.length > 0 ? options.include : ALL;
+    const offset = options?.offset ?? 0;
+    const limit = options?.limit;
+    const has = (k: string) => include.includes(k as any);
+
     const [conversations, fileEvents, memories] = await Promise.all([
-      this.getAllConversations(project),
-      this.getAllFileEvents(project),
-      this.getMemories(undefined, 100000, project),
+      has("conversations") ? this.getAllConversations(project, offset, limit) : Promise.resolve([] as ConversationEvent[]),
+      has("fileEvents") ? this.getAllFileEvents(project, offset, limit) : Promise.resolve([] as FileEvent[]),
+      has("memories") ? this.getMemories(undefined, limit ?? 100000, project, undefined, offset) : Promise.resolve([] as Memory[]),
     ]);
+
     return {
       exportedAt: Date.now(),
       project: project || null,
+      include,
+      offset,
+      limit: limit ?? null,
+      counts: {
+        conversations: conversations.length,
+        fileEvents: fileEvents.length,
+        memories: memories.length,
+      },
       conversations,
       fileEvents,
       memories,

@@ -89,6 +89,13 @@ interface ClearOldDataArgs {
   project?: string;
 }
 
+interface ExportDataArgs {
+  project?: string;
+  include?: ("conversations" | "fileEvents" | "memories")[];
+  offset?: number;
+  limit?: number;
+}
+
 const HINDSIGHT_VERSION = "0.3.0";
 
 const server = new Server(
@@ -416,13 +423,29 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "export_data",
-        description: "导出指定项目的全部数据（对话、文件事件、记忆）为 JSON",
+        description: "导出指定项目的数据（对话、文件事件、记忆）为 JSON，支持类型过滤和分页",
         inputSchema: {
           type: "object",
           properties: {
             project: {
               type: "string",
               description: "项目名称（可选，不传则导出全部）",
+            },
+            include: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["conversations", "fileEvents", "memories"],
+              },
+              description: "要导出的数据类型（可选，默认全部）",
+            },
+            offset: {
+              type: "number",
+              description: "分页偏移量（默认 0）",
+            },
+            limit: {
+              type: "number",
+              description: "每类数据最大条数（默认全部导出）",
             },
           },
         },
@@ -862,8 +885,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "export_data": {
-      const { project } = (args as ProjectArgs) || {};
-      const data = await store.exportData(project);
+      const { project, include, offset = 0, limit } = (args as ExportDataArgs) || {};
+      const VALID_INCLUDE = ["conversations", "fileEvents", "memories"];
+      if (include !== undefined && (!Array.isArray(include) || include.some((i) => !VALID_INCLUDE.includes(i)))) {
+        throw new Error("Invalid include: must be an array of 'conversations', 'fileEvents', 'memories'");
+      }
+      if (typeof offset !== 'number' || offset < 0) {
+        throw new Error("Invalid offset: must be >= 0");
+      }
+      if (limit !== undefined && (typeof limit !== 'number' || limit <= 0 || limit > 10000)) {
+        throw new Error("Invalid limit: must be between 1 and 10000");
+      }
+      const data = await store.exportData(project, { include, offset, limit });
       return {
         content: [
           {

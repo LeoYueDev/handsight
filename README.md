@@ -84,7 +84,7 @@ npm run build
 | `list_projects` | 列出所有有数据的项目及记录数量 | 无 |
 | `refresh_profile` | 基于最新数据刷新用户画像 | 无 |
 | `get_stats` | 获取数据库统计信息 | 无 |
-| `export_data` | 导出全部数据为 JSON | 无 |
+| `export_data` | 导出全部数据为 JSON（支持类型过滤和分页） | 无 |
 | `clear_old_data` | 清理指定天数之前的历史数据 | `olderThanDays` |
 | `health_check` | 检查服务器运行状态 | 无 |
 
