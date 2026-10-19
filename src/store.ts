@@ -703,7 +703,7 @@ export class Store {
     if (!this.db) throw new Error("Database not initialized");
 
     let sql = "SELECT * FROM memories";
-    const conditions: string[] = ["content LIKE ?"];
+    const conditions: string[] = ["content LIKE ? ESCAPE '\\'"];
     const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
     const params: BindParams = [`%${escapedQuery}%`];
     if (type) {
