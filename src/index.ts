@@ -15,6 +15,12 @@ const MAX_CONTENT_LENGTH = 64 * 1024;
 const MAX_BATCH_MESSAGES = 1000;
 const MAX_QUERY_LENGTH = 256;
 
+function assertProjectType(project: unknown): void {
+  if (project !== undefined && typeof project !== 'string') {
+    throw new Error("Invalid project: must be a string");
+  }
+}
+
 interface RecordConversationArgs {
   role: "user" | "assistant";
   content: string;
@@ -489,6 +495,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameters: role, content");
       }
       const { role, content, project } = args as unknown as RecordConversationArgs;
+      assertProjectType(project);
       if (role !== 'user' && role !== 'assistant') {
         throw new Error("Invalid role: must be 'user' or 'assistant'");
       }
@@ -520,6 +527,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: messages");
       }
       const { messages, project } = args as unknown as BatchRecordConversationsArgs;
+      assertProjectType(project);
       if (!Array.isArray(messages) || messages.length === 0) {
         throw new Error("Invalid messages: must be a non-empty array");
       }
@@ -562,6 +570,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: path");
       }
       const { path: watchPath, project } = args as unknown as FileWatchingArgs;
+      assertProjectType(project);
       if (typeof watchPath !== 'string' || watchPath.trim() === '') {
         throw new Error("Invalid path: must be a non-empty string");
       }
@@ -683,6 +692,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameters: type, content");
       }
       const { type, content, confidence = 0.8, project } = args as unknown as AddMemoryArgs;
+      assertProjectType(project);
       if (!["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
@@ -912,6 +922,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: olderThanDays");
       }
       const { olderThanDays, project } = args as unknown as ClearOldDataArgs;
+      assertProjectType(project);
       if (typeof olderThanDays !== 'number' || olderThanDays < 0) {
         throw new Error("Invalid olderThanDays: must be a non-negative number");
       }
