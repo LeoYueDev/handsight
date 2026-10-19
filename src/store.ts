@@ -150,6 +150,10 @@ export class Store {
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_file_timestamp ON file_events(timestamp)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memories(timestamp)`);
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_memory_type ON memories(type)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_conv_project_ts ON conversations(project, timestamp)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_file_project_ts ON file_events(project, timestamp)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memory_project_ts ON memories(project, timestamp)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memory_type_ts ON memories(type, timestamp)`);
 
     this.scheduleSave();
     await this.cleanup();
