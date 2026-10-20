@@ -115,6 +115,23 @@ async function main() {
   const r9 = await client.callTool({ name: "stop_file_watching", arguments: {} });
   console.log("  Result:", (r9.content as any)[0].text);
 
+  console.log("\n=== Test: 非数字 limit 应被拒绝 ===");
+  for (const tool of ["get_memories", "search_memories"]) {
+    const args: Record<string, unknown> = { project: "test", limit: "50" };
+    if (tool === "search_memories") args.query = "error";
+    let rejected = false;
+    try {
+      const res = await client.callTool({ name: tool, arguments: args });
+      rejected = Boolean(res.isError);
+    } catch (err) {
+      rejected = (err as Error).message.includes("Invalid limit");
+    }
+    if (!rejected) {
+      throw new Error(`${tool}: 非数字 limit 未被拒绝`);
+    }
+    console.log(`  ${tool}: 已拒绝非数字 limit`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

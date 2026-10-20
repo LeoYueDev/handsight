@@ -670,7 +670,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_memories": {
       const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
-      if (limit <= 0 || limit > 1000) {
+      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
@@ -880,7 +880,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (query.length > MAX_QUERY_LENGTH) {
         throw new Error(`Invalid query: must be at most ${MAX_QUERY_LENGTH} characters`);
       }
-      if (limit <= 0 || limit > 1000) {
+      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const memories = await store.searchMemories(query, type, limit, project);
