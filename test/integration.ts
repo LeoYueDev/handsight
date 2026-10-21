@@ -132,6 +132,23 @@ async function main() {
     console.log(`  ${tool}: 已拒绝非数字 limit`);
   }
 
+  console.log("\n=== Test: 非法 type 应被拒绝 ===");
+  for (const tool of ["get_memories", "search_memories"]) {
+    const args: Record<string, unknown> = { project: "test", type: "bogus" };
+    if (tool === "search_memories") args.query = "error";
+    let rejected = false;
+    try {
+      const res = await client.callTool({ name: tool, arguments: args });
+      rejected = Boolean(res.isError);
+    } catch (err) {
+      rejected = (err as Error).message.includes("Invalid type");
+    }
+    if (!rejected) {
+      throw new Error(`${tool}: 非法 type 未被拒绝`);
+    }
+    console.log(`  ${tool}: 已拒绝非法 type`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

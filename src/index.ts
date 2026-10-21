@@ -670,6 +670,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_memories": {
       const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
+      if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
+        throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
+      }
       if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
@@ -874,6 +877,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: query");
       }
       const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
+      if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
+        throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
+      }
        if (typeof query !== 'string' || query.trim() === '') {
         throw new Error("Invalid query: must be a non-empty string");
       }
