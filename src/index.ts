@@ -673,7 +673,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
-      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+      if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
@@ -830,7 +830,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_recent_conversations": {
       const { limit = 20, project } = (args as GetRecentConversationsArgs) || {};
-      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+      if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const conversations = await store.getRecentConversations(limit, project);
@@ -846,7 +846,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_file_events": {
       const { limit = 100, project } = (args as GetFileEventsArgs) || {};
-      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+      if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const fileEvents = await store.getRecentFileEvents(limit, project);
@@ -886,7 +886,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (query.length > MAX_QUERY_LENGTH) {
         throw new Error(`Invalid query: must be at most ${MAX_QUERY_LENGTH} characters`);
       }
-      if (typeof limit !== 'number' || limit <= 0 || limit > 1000) {
+      if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
       const memories = await store.searchMemories(query, type, limit, project);
@@ -906,10 +906,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (include !== undefined && (!Array.isArray(include) || include.some((i) => !VALID_INCLUDE.includes(i)))) {
         throw new Error("Invalid include: must be an array of 'conversations', 'fileEvents', 'memories'");
       }
-      if (typeof offset !== 'number' || offset < 0) {
+      if (!Number.isInteger(offset) || offset < 0) {
         throw new Error("Invalid offset: must be >= 0");
       }
-      if (limit !== undefined && (typeof limit !== 'number' || limit <= 0 || limit > 10000)) {
+      if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0 || limit > 10000)) {
         throw new Error("Invalid limit: must be between 1 and 10000");
       }
       const data = await store.exportData(project, { include, offset, limit });

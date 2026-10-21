@@ -149,6 +149,29 @@ async function main() {
     console.log(`  ${tool}: 已拒绝非法 type`);
   }
 
+  console.log("\n=== Test: 小数 limit/offset 应被拒绝 ===");
+  const cases: { tool: string; args: Record<string, unknown>; expect: string }[] = [
+    { tool: "get_memories", args: { project: "test", limit: 1.5 }, expect: "Invalid limit" },
+    { tool: "search_memories", args: { query: "error", limit: 1.5 }, expect: "Invalid limit" },
+    { tool: "get_recent_conversations", args: { project: "test", limit: 1.5 }, expect: "Invalid limit" },
+    { tool: "get_file_events", args: { project: "test", limit: 1.5 }, expect: "Invalid limit" },
+    { tool: "export_data", args: { project: "test", limit: 1.5 }, expect: "Invalid limit" },
+    { tool: "export_data", args: { project: "test", offset: 1.5 }, expect: "Invalid offset" },
+  ];
+  for (const c of cases) {
+    let ok = false;
+    try {
+      const res = await client.callTool({ name: c.tool, arguments: c.args });
+      ok = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes(c.expect);
+    } catch (err) {
+      ok = (err as Error).message.includes(c.expect);
+    }
+    if (!ok) {
+      throw new Error(`${c.tool} ${JSON.stringify(c.args)}: 小数参数未被拒绝`);
+    }
+    console.log(`  ${c.tool} ${JSON.stringify(c.args)}: 已拒绝`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
