@@ -172,6 +172,30 @@ async function main() {
     console.log(`  ${c.tool} ${JSON.stringify(c.args)}: 已拒绝`);
   }
 
+  console.log("\n=== Test: 读取路径非字符串 project 应被拒绝 ===");
+  const readCases: { tool: string; args: Record<string, unknown> }[] = [
+    { tool: "get_memories", args: { project: [1, 2] } },
+    { tool: "search_memories", args: { query: "error", project: {} } },
+    { tool: "get_stats", args: { project: [1, 2] } },
+    { tool: "get_recent_conversations", args: { project: {} } },
+    { tool: "get_file_events", args: { project: [1, 2] } },
+    { tool: "export_data", args: { project: {} } },
+    { tool: "get_user_context", args: { project: [1, 2] } },
+  ];
+  for (const c of readCases) {
+    let ok = false;
+    try {
+      const res = await client.callTool({ name: c.tool, arguments: c.args });
+      ok = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid project");
+    } catch (err) {
+      ok = (err as Error).message.includes("Invalid project");
+    }
+    if (!ok) {
+      throw new Error(`${c.tool} ${JSON.stringify(c.args)}: 非字符串 project 未被拒绝`);
+    }
+    console.log(`  ${c.tool}: 已拒绝非字符串 project`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

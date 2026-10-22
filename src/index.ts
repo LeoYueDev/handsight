@@ -657,6 +657,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_user_context": {
       const { project } = (args as ProjectArgs) || {};
+      assertProjectType(project);
       const profile = await profiler.getProfile(project);
       return {
         content: [
@@ -670,6 +671,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_memories": {
       const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
+      assertProjectType(project);
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
@@ -817,6 +819,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_stats": {
       const { project } = (args as ProjectArgs) || {};
+      assertProjectType(project);
       const stats = await store.getStats(project);
       return {
         content: [
@@ -830,6 +833,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_recent_conversations": {
       const { limit = 20, project } = (args as GetRecentConversationsArgs) || {};
+      assertProjectType(project);
       if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
@@ -846,6 +850,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_file_events": {
       const { limit = 100, project } = (args as GetFileEventsArgs) || {};
+      assertProjectType(project);
       if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
@@ -877,6 +882,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error("Missing required parameter: query");
       }
       const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
+      assertProjectType(project);
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
       }
@@ -902,6 +908,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "export_data": {
       const { project, include, offset = 0, limit } = (args as ExportDataArgs) || {};
+      assertProjectType(project);
       const VALID_INCLUDE = ["conversations", "fileEvents", "memories"];
       if (include !== undefined && (!Array.isArray(include) || include.some((i) => !VALID_INCLUDE.includes(i)))) {
         throw new Error("Invalid include: must be an array of 'conversations', 'fileEvents', 'memories'");
