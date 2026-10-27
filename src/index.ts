@@ -606,7 +606,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "stop_file_watching": {
       const { path: stopPath } = (args as { path?: string }) || {};
-      if (stopPath) {
+      if (stopPath !== undefined) {
+        if (typeof stopPath !== 'string' || stopPath.trim() === '') {
+          throw new Error("Invalid path: must be a non-empty string");
+        }
         const resolved = path.resolve(stopPath);
         const watcher = fileWatchers.get(resolved);
         if (!watcher) {

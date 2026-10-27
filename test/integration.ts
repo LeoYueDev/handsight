@@ -196,6 +196,21 @@ async function main() {
     console.log(`  ${c.tool}: 已拒绝非字符串 project`);
   }
 
+  console.log("\n=== Test: stop_file_watching 非字符串 path 应被拒绝 ===");
+  for (const badPath of [123, {}, ["a"]]) {
+    let ok = false;
+    try {
+      const res = await client.callTool({ name: "stop_file_watching", arguments: { path: badPath } });
+      ok = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid path");
+    } catch (err) {
+      ok = (err as Error).message.includes("Invalid path");
+    }
+    if (!ok) {
+      throw new Error(`stop_file_watching path=${JSON.stringify(badPath)}: 非字符串未被拒绝`);
+    }
+    console.log(`  path=${JSON.stringify(badPath)}: 已拒绝`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
