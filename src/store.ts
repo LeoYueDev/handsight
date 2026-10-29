@@ -532,7 +532,14 @@ export class Store {
       if (sets.length === 0) return true;
 
       params.push(id);
-      this.db.run(`UPDATE memories SET ${sets.join(", ")} WHERE id = ?`, params);
+      try {
+        this.db.run(`UPDATE memories SET ${sets.join(", ")} WHERE id = ?`, params);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+          throw new Error("Memory with the same content already exists in this project");
+        }
+        throw err;
+      }
       this.scheduleSave();
       return true;
     });

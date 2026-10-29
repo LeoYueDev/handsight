@@ -226,6 +226,28 @@ async function main() {
     console.log(`  project=${JSON.stringify(badProj)}: 已拒绝`);
   }
 
+  console.log("\n=== Test: update_memory 撞重复 content 应返回干净错误 ===");
+  await client.callTool({ name: "add_memory", arguments: { type: "preference", content: "dup-a", project: "test" } });
+  const addB = await client.callTool({ name: "add_memory", arguments: { type: "pattern", content: "dup-b", project: "test" } });
+  const idB = Number(((addB.content as any)[0].text.match(/ID: (\d+)/) ?? [])[1]);
+  let cleanReject = false;
+  try {
+    const res = await client.callTool({ name: "update_memory", arguments: { id: idB, content: "dup-a" } });
+    const text = (res.content as any)[0]?.text ?? "";
+    cleanReject = Boolean(res.isError) && !text.includes("UNIQUE constraint") && text.includes("already exists");
+  } catch (err) {
+    const msg = (err as Error).message;
+    cleanReject = !msg.includes("UNIQUE constraint") && msg.includes("already exists");
+  }
+  if (!cleanReject) {
+    throw new Error("update_memory: 重复 content 未返回干净错误");
+  }
+  const still = await client.callTool({ name: "get_memory_by_id", arguments: { id: idB } });
+  if (!(still.content as any)[0].text.includes("dup-b")) {
+    throw new Error("update_memory: 失败的更新不应改变原内容");
+  }
+  console.log(`  已干净拒绝, 原内容未变 (id ${idB})`);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
