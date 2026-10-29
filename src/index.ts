@@ -734,6 +734,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "refresh_profile": {
       const { project } = (args as ProjectArgs) || {};
+      assertProjectType(project);
       await profiler.refreshProfile(project);
       return {
         content: [

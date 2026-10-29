@@ -211,6 +211,21 @@ async function main() {
     console.log(`  path=${JSON.stringify(badPath)}: 已拒绝`);
   }
 
+  console.log("\n=== Test: refresh_profile 非字符串 project 应被拒绝 ===");
+  for (const badProj of [[1, 2], {}]) {
+    let ok = false;
+    try {
+      const res = await client.callTool({ name: "refresh_profile", arguments: { project: badProj } });
+      ok = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid project");
+    } catch (err) {
+      ok = (err as Error).message.includes("Invalid project");
+    }
+    if (!ok) {
+      throw new Error(`refresh_profile project=${JSON.stringify(badProj)}: 非字符串未被拒绝`);
+    }
+    console.log(`  project=${JSON.stringify(badProj)}: 已拒绝`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
