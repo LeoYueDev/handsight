@@ -749,6 +749,9 @@ export class Store {
     if (limit !== undefined) {
       sql += " LIMIT ? OFFSET ?";
       params.push(limit, offset ?? 0);
+    } else if (offset !== undefined && offset > 0) {
+      sql += " LIMIT -1 OFFSET ?";
+      params.push(offset);
     }
     const stmt = this.db.prepare(sql);
     stmt.bind(params);
@@ -773,6 +776,9 @@ export class Store {
     if (limit !== undefined) {
       sql += " LIMIT ? OFFSET ?";
       params.push(limit, offset ?? 0);
+    } else if (offset !== undefined && offset > 0) {
+      sql += " LIMIT -1 OFFSET ?";
+      params.push(offset);
     }
     const stmt = this.db.prepare(sql);
     stmt.bind(params);

@@ -248,6 +248,19 @@ async function main() {
   }
   console.log(`  已干净拒绝, 原内容未变 (id ${idB})`);
 
+  console.log("\n=== Test: export_data 仅 offset 应对三类数据一致生效 ===");
+  const offProj = "offset-test";
+  for (let i = 0; i < 3; i++) {
+    await client.callTool({ name: "record_conversation", arguments: { role: "user", content: `off-c${i}`, project: offProj } });
+    await client.callTool({ name: "add_memory", arguments: { type: "context", content: `off-m${i}`, project: offProj } });
+  }
+  const offRes = await client.callTool({ name: "export_data", arguments: { project: offProj, offset: 1 } });
+  const offData = JSON.parse((offRes.content as any)[0].text);
+  if (offData.conversations.length !== 2 || offData.memories.length !== 2) {
+    throw new Error(`export_data offset=1: 期望 conversations=2 memories=2, 实际 conversations=${offData.conversations.length} memories=${offData.memories.length}`);
+  }
+  console.log(`  offset=1: conversations ${offData.conversations.length}, memories ${offData.memories.length}, 一致`);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
