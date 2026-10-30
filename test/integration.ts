@@ -280,6 +280,48 @@ async function main() {
   }
   console.log(`  ${pft.content}`);
 
+  console.log("\n=== Test: search_memories 相关度排序 + 分页 ===");
+  const rankProj = "search-rank";
+  // A: 命中 3 次、低置信、较旧；B: 命中 1 次、高置信、较新
+  await client.callTool({ name: "add_memory", arguments: { type: "context", content: "kw kw kw alpha", confidence: 0.1, project: rankProj } });
+  await new Promise((r) => setTimeout(r, 5));
+  await client.callTool({ name: "add_memory", arguments: { type: "context", content: "kw beta", confidence: 0.9, project: rankProj } });
+
+  const relRes = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj } });
+  const rel = JSON.parse((relRes.content as any)[0].text) as any[];
+  if (rel[0]?.content !== "kw kw kw alpha" || rel[1]?.content !== "kw beta") {
+    throw new Error(`相关度排序错误: ${rel.map((m) => m.content).join(" | ")}`);
+  }
+  console.log("  relevance 排序: 多次命中优先");
+
+  const recRes = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj, sort: "recent" } });
+  const rec = JSON.parse((recRes.content as any)[0].text) as any[];
+  if (rec[0]?.content !== "kw beta") {
+    throw new Error(`sort=recent 应按时间倒序: ${rec.map((m) => m.content).join(" | ")}`);
+  }
+  console.log("  sort=recent: 时间倒序");
+
+  const sOffRes = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj, offset: 1 } });
+  const sOff = JSON.parse((sOffRes.content as any)[0].text) as any[];
+  if (sOff.length !== 1 || sOff[0]?.content !== "kw beta") {
+    throw new Error(`offset=1 应跳过首位: ${sOff.map((m) => m.content).join(" | ")}`);
+  }
+  console.log("  offset=1: 跳过分页正确");
+
+  for (const bad of [{ sort: "bogus" }, { offset: 1.5 }]) {
+    let ok = false;
+    try {
+      const res = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj, ...bad } });
+      const key = "sort" in bad ? "Invalid sort" : "Invalid offset";
+      ok = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes(key);
+    } catch (err) {
+      const key = "sort" in bad ? "Invalid sort" : "Invalid offset";
+      ok = (err as Error).message.includes(key);
+    }
+    if (!ok) throw new Error(`search_memories ${JSON.stringify(bad)}: 非法参数未被拒绝`);
+    console.log(`  ${JSON.stringify(bad)}: 已拒绝`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

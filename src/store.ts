@@ -704,14 +704,15 @@ export class Store {
     query: string,
     type?: string,
     limit: number = 50,
-    project?: string
+    project?: string,
+    sort: "relevance" | "recent" = "relevance",
+    offset: number = 0
   ): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
 
-    let sql = "SELECT * FROM memories";
-    const conditions: string[] = ["content LIKE ? ESCAPE '\\'"];
     const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
+    const conditions: string[] = ["content LIKE ? ESCAPE '\\'"];
     const params: BindParams = [`%${escapedQuery}%`];
     if (type) {
       conditions.push("type = ?");
@@ -721,9 +722,35 @@ export class Store {
       conditions.push("project = ?");
       params.push(project);
     }
-    sql += " WHERE " + conditions.join(" AND ");
-    sql += " ORDER BY timestamp DESC LIMIT ?";
-    params.push(limit);
+    const where = conditions.join(" AND ");
+
+    if (sort === "relevance") {
+      // 相关度 = query 在 content 中的命中次数 + confidence 加权 0.5
+      // upper() 与 LIKE 的 ASCII 大小写不敏感行为保持一致
+      const sql = `SELECT id, timestamp, type, content, confidence, source, project FROM (
+        SELECT *,
+          (length(upper(content)) - length(replace(upper(content), upper(?), ''))) / length(upper(?)) + confidence * 0.5 AS relevance
+        FROM memories WHERE content LIKE ? ESCAPE '\\'${type ? " AND type = ?" : ""}${project ? " AND project = ?" : ""}
+      ) ORDER BY relevance DESC, timestamp DESC LIMIT ? OFFSET ?`;
+      const rp: BindParams = [query, query, `%${escapedQuery}%`];
+      if (type) rp.push(type);
+      if (project) rp.push(project);
+      rp.push(limit, offset);
+
+      const stmt = this.db.prepare(sql);
+      stmt.bind(rp);
+      const results: Memory[] = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject() as unknown as Memory);
+      }
+      stmt.free();
+      return results;
+    }
+
+    let sql = "SELECT * FROM memories";
+    sql += " WHERE " + where;
+    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
     stmt.bind(params);

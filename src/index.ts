@@ -88,6 +88,8 @@ interface SearchMemoriesArgs {
   type?: "preference" | "pattern" | "decision" | "context";
   limit?: number;
   project?: string;
+  sort?: "relevance" | "recent";
+  offset?: number;
 }
 
 interface ClearOldDataArgs {
@@ -402,7 +404,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "search_memories",
-        description: "按关键词搜索记忆内容",
+        description: "按关键词搜索记忆内容，默认按相关度（命中次数+置信度）排序，支持分页",
         inputSchema: {
           type: "object",
           properties: {
@@ -418,6 +420,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             limit: {
               type: "number",
               description: "返回数量限制（默认 50）",
+            },
+            offset: {
+              type: "number",
+              description: "分页偏移量（默认 0）",
+            },
+            sort: {
+              type: "string",
+              enum: ["relevance", "recent"],
+              description: "排序方式：relevance 相关度优先（默认），recent 按时间倒序",
             },
             project: {
               type: "string",
@@ -885,7 +896,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!args || typeof args !== 'object' || !('query' in args)) {
         throw new Error("Missing required parameter: query");
       }
-      const { query, type, limit = 50, project } = args as unknown as SearchMemoriesArgs;
+      const { query, type, limit = 50, project, sort = "relevance", offset = 0 } = args as unknown as SearchMemoriesArgs;
       assertProjectType(project);
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
@@ -899,7 +910,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
-      const memories = await store.searchMemories(query, type, limit, project);
+      if (!["relevance", "recent"].includes(sort)) {
+        throw new Error("Invalid sort: must be one of 'relevance', 'recent'");
+      }
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw new Error("Invalid offset: must be >= 0");
+      }
+      const memories = await store.searchMemories(query, type, limit, project, sort, offset);
       return {
         content: [
           {
