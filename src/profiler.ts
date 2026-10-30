@@ -290,7 +290,7 @@ export class Profiler {
 
     const fileTypes = new Map<string, number>();
     for (const event of fileEvents) {
-      const ext = event.path.split(".").pop() || "";
+      const ext = path.extname(event.path).slice(1);
       if (ext) {
         fileTypes.set(ext, (fileTypes.get(ext) || 0) + 1);
       }

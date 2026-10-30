@@ -261,6 +261,25 @@ async function main() {
   }
   console.log(`  offset=1: conversations ${offData.conversations.length}, memories ${offData.memories.length}, 一致`);
 
+  console.log("\n=== Test: primary_file_types 不应把无点文件当扩展名 ===");
+  const extDir = path.join(testDir, "watch-ext");
+  fs.mkdirSync(extDir, { recursive: true });
+  const extProj = "watch-ext-test";
+  await client.callTool({ name: "start_file_watching", arguments: { path: extDir, project: extProj } });
+  fs.writeFileSync(path.join(extDir, "data.txt"), "x");
+  fs.writeFileSync(path.join(extDir, "Makefile"), "all:");
+  await new Promise((r) => setTimeout(r, 1500));
+  await client.callTool({ name: "stop_file_watching", arguments: {} });
+  await client.callTool({ name: "refresh_profile", arguments: { project: extProj } });
+  const pmRes = await client.callTool({ name: "get_memories", arguments: { project: extProj, type: "pattern" } });
+  const patterns = JSON.parse((pmRes.content as any)[0].text) as any[];
+  const pft = patterns.find((m) => String(m.content).startsWith("primary_file_types:"));
+  if (!pft) throw new Error("未生成 primary_file_types 记忆");
+  if (pft.content.includes("Makefile")) {
+    throw new Error(`无点文件被当成扩展名: ${pft.content}`);
+  }
+  console.log(`  ${pft.content}`);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
