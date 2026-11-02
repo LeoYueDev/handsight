@@ -90,6 +90,7 @@ interface SearchMemoriesArgs {
   project?: string;
   sort?: "relevance" | "recent";
   offset?: number;
+  minConfidence?: number;
 }
 
 interface ClearOldDataArgs {
@@ -429,6 +430,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "string",
               enum: ["relevance", "recent"],
               description: "排序方式：relevance 相关度优先（默认），recent 按时间倒序",
+            },
+            minConfidence: {
+              type: "number",
+              description: "最低置信度过滤 0-1（可选）",
             },
             project: {
               type: "string",
@@ -896,7 +901,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!args || typeof args !== 'object' || !('query' in args)) {
         throw new Error("Missing required parameter: query");
       }
-      const { query, type, limit = 50, project, sort = "relevance", offset = 0 } = args as unknown as SearchMemoriesArgs;
+      const { query, type, limit = 50, project, sort = "relevance", offset = 0, minConfidence } = args as unknown as SearchMemoriesArgs;
       assertProjectType(project);
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
@@ -916,7 +921,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (!Number.isInteger(offset) || offset < 0) {
         throw new Error("Invalid offset: must be >= 0");
       }
-      const memories = await store.searchMemories(query, type, limit, project, sort, offset);
+      if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
+        throw new Error("Invalid minConfidence: must be a number between 0 and 1");
+      }
+      const memories = await store.searchMemories(query, type, limit, project, sort, offset, minConfidence);
       return {
         content: [
           {

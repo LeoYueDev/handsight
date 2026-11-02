@@ -322,6 +322,25 @@ async function main() {
     console.log(`  ${JSON.stringify(bad)}: 已拒绝`);
   }
 
+  console.log("\n=== Test: search_memories minConfidence 过滤 ===");
+  for (const sort of ["relevance", "recent"]) {
+    const mcRes = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj, minConfidence: 0.5, sort } });
+    const mc = JSON.parse((mcRes.content as any)[0].text) as any[];
+    if (mc.length !== 1 || mc[0]?.content !== "kw beta") {
+      throw new Error(`sort=${sort} minConfidence=0.5: 期望仅 kw beta(0.9), 实际 ${mc.map((m) => `${m.content}@${m.confidence}`).join(" | ")}`);
+    }
+    console.log(`  sort=${sort}: 低置信记忆已过滤`);
+  }
+  let mcRejected = false;
+  try {
+    const res = await client.callTool({ name: "search_memories", arguments: { query: "kw", project: rankProj, minConfidence: 2 } });
+    mcRejected = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid minConfidence");
+  } catch (err) {
+    mcRejected = (err as Error).message.includes("Invalid minConfidence");
+  }
+  if (!mcRejected) throw new Error("search_memories: 非法 minConfidence 未被拒绝");
+  console.log("  minConfidence=2: 已拒绝");
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

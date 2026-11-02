@@ -706,7 +706,8 @@ export class Store {
     limit: number = 50,
     project?: string,
     sort: "relevance" | "recent" = "relevance",
-    offset: number = 0
+    offset: number = 0,
+    minConfidence?: number
   ): Promise<Memory[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
@@ -722,6 +723,10 @@ export class Store {
       conditions.push("project = ?");
       params.push(project);
     }
+    if (minConfidence !== undefined) {
+      conditions.push("confidence >= ?");
+      params.push(minConfidence);
+    }
     const where = conditions.join(" AND ");
 
     if (sort === "relevance") {
@@ -730,11 +735,9 @@ export class Store {
       const sql = `SELECT id, timestamp, type, content, confidence, source, project FROM (
         SELECT *,
           (length(upper(content)) - length(replace(upper(content), upper(?), ''))) / length(upper(?)) + confidence * 0.5 AS relevance
-        FROM memories WHERE content LIKE ? ESCAPE '\\'${type ? " AND type = ?" : ""}${project ? " AND project = ?" : ""}
+        FROM memories WHERE ${where}
       ) ORDER BY relevance DESC, timestamp DESC LIMIT ? OFFSET ?`;
-      const rp: BindParams = [query, query, `%${escapedQuery}%`];
-      if (type) rp.push(type);
-      if (project) rp.push(project);
+      const rp: BindParams = [query, query, ...params];
       rp.push(limit, offset);
 
       const stmt = this.db.prepare(sql);
