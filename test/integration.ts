@@ -341,6 +341,37 @@ async function main() {
   if (!mcRejected) throw new Error("search_memories: 非法 minConfidence 未被拒绝");
   console.log("  minConfidence=2: 已拒绝");
 
+  console.log("\n=== Test: get_memories offset 分页 ===");
+  const pageProj = "page-proj";
+  for (let i = 0; i < 5; i++) {
+    await client.callTool({ name: "add_memory", arguments: { type: "context", content: `pg-m${i}`, project: pageProj } });
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  const page1 = await client.callTool({ name: "get_memories", arguments: { project: pageProj, limit: 2, offset: 0 } });
+  const p1 = JSON.parse((page1.content as any)[0].text) as any[];
+  const page2 = await client.callTool({ name: "get_memories", arguments: { project: pageProj, limit: 2, offset: 2 } });
+  const p2 = JSON.parse((page2.content as any)[0].text) as any[];
+  const page3 = await client.callTool({ name: "get_memories", arguments: { project: pageProj, limit: 2, offset: 4 } });
+  const p3 = JSON.parse((page3.content as any)[0].text) as any[];
+  if (p1.length !== 2 || p2.length !== 2 || p3.length !== 1) {
+    throw new Error(`get_memories 分页条数错误: p1=${p1.length} p2=${p2.length} p3=${p3.length} (期望 2,2,1)`);
+  }
+  const ids1 = new Set(p1.map((m) => m.id));
+  if (p2.some((m) => ids1.has(m.id))) {
+    throw new Error("get_memories: offset 未生效, 两页内容重叠");
+  }
+  console.log(`  分页: ${p1.length}+${p2.length}+${p3.length}, 无重叠`);
+
+  let gmOffRejected = false;
+  try {
+    const res = await client.callTool({ name: "get_memories", arguments: { project: pageProj, offset: 1.5 } });
+    gmOffRejected = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid offset");
+  } catch (err) {
+    gmOffRejected = (err as Error).message.includes("Invalid offset");
+  }
+  if (!gmOffRejected) throw new Error("get_memories: 非法 offset 未被拒绝");
+  console.log("  offset=1.5: 已拒绝");
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

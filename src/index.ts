@@ -45,6 +45,7 @@ interface GetMemoriesArgs {
   limit?: number;
   project?: string;
   minConfidence?: number;
+  offset?: number;
 }
 
 interface AddMemoryArgs {
@@ -245,6 +246,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             minConfidence: {
               type: "number",
               description: "最低置信度过滤 0-1（可选）",
+            },
+            offset: {
+              type: "number",
+              description: "分页偏移量（默认 0）",
             },
             project: {
               type: "string",
@@ -689,7 +694,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "get_memories": {
-      const { type, limit = 50, project, minConfidence } = (args as GetMemoriesArgs) || {};
+      const { type, limit = 50, project, minConfidence, offset = 0 } = (args as GetMemoriesArgs) || {};
       assertProjectType(project);
       if (type !== undefined && !["preference", "pattern", "decision", "context"].includes(type)) {
         throw new Error("Invalid type: must be one of 'preference', 'pattern', 'decision', 'context'");
@@ -700,7 +705,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (minConfidence !== undefined && (typeof minConfidence !== 'number' || minConfidence < 0 || minConfidence > 1)) {
         throw new Error("Invalid minConfidence: must be a number between 0 and 1");
       }
-      const memories = await store.getMemories(type, limit, project, minConfidence);
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw new Error("Invalid offset: must be >= 0");
+      }
+      const memories = await store.getMemories(type, limit, project, minConfidence, offset);
       return {
         content: [
           {
