@@ -416,7 +416,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             query: {
               type: "string",
-              description: "搜索关键词",
+              description: "搜索关键词，多个词以空格分隔需同时命中（AND）",
             },
             type: {
               type: "string",

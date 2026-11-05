@@ -712,9 +712,10 @@ export class Store {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
 
-    const escapedQuery = query.replace(/[\\%_]/g, "\\$&");
-    const conditions: string[] = ["content LIKE ? ESCAPE '\\'"];
-    const params: BindParams = [`%${escapedQuery}%`];
+    // 按空白分词, 每个词需同时命中(AND), 顺序无关
+    const terms = query.split(/\s+/).filter(Boolean);
+    const conditions: string[] = terms.map(() => "content LIKE ? ESCAPE '\\'");
+    const params: BindParams = terms.map((t) => `%${t.replace(/[\\%_]/g, "\\$&")}%`);
     if (type) {
       conditions.push("type = ?");
       params.push(type);
@@ -730,14 +731,20 @@ export class Store {
     const where = conditions.join(" AND ");
 
     if (sort === "relevance") {
-      // 相关度 = query 在 content 中的命中次数 + confidence 加权 0.5
+      // 相关度 = 各词命中次数之和 + confidence 加权 0.5
       // upper() 与 LIKE 的 ASCII 大小写不敏感行为保持一致
+      const scoreExpr = terms
+        .map(() => "(length(upper(content)) - length(replace(upper(content), upper(?), ''))) / length(upper(?))")
+        .join(" + ");
       const sql = `SELECT id, timestamp, type, content, confidence, source, project FROM (
-        SELECT *,
-          (length(upper(content)) - length(replace(upper(content), upper(?), ''))) / length(upper(?)) + confidence * 0.5 AS relevance
+        SELECT *, ${scoreExpr} + confidence * 0.5 AS relevance
         FROM memories WHERE ${where}
       ) ORDER BY relevance DESC, timestamp DESC LIMIT ? OFFSET ?`;
-      const rp: BindParams = [query, query, ...params];
+      const rp: BindParams = [];
+      for (const t of terms) {
+        rp.push(t, t);
+      }
+      rp.push(...params);
       rp.push(limit, offset);
 
       const stmt = this.db.prepare(sql);

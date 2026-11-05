@@ -372,6 +372,29 @@ async function main() {
   if (!gmOffRejected) throw new Error("get_memories: 非法 offset 未被拒绝");
   console.log("  offset=1.5: 已拒绝");
 
+  console.log("\n=== Test: search_memories 多关键词 AND 搜索 ===");
+  const mtProj = "multi-term";
+  await client.callTool({ name: "add_memory", arguments: { type: "context", content: "alpha solo kw", project: mtProj } });
+  await new Promise((r) => setTimeout(r, 5));
+  await client.callTool({ name: "add_memory", arguments: { type: "context", content: "kw kw kw alpha", confidence: 0.9, project: mtProj } });
+
+  const mtRes = await client.callTool({ name: "search_memories", arguments: { query: "kw alpha", project: mtProj } });
+  const mtArr = JSON.parse((mtRes.content as any)[0].text) as any[];
+  if (mtArr.length !== 2) {
+    throw new Error(`多关键词 AND 应命中 2 条(含顺序无关), 实际 ${mtArr.length}: ${mtArr.map((m) => m.content).join(" | ")}`);
+  }
+  if (mtArr[0].content !== "kw kw kw alpha") {
+    throw new Error(`多词 relevance 排序错误: ${mtArr.map((m) => m.content).join(" | ")}`);
+  }
+  console.log("  AND 命中 + 多词 relevance 排序正确");
+
+  const noneRes = await client.callTool({ name: "search_memories", arguments: { query: "kw zzz", project: mtProj } });
+  const noneArr = JSON.parse((noneRes.content as any)[0].text) as any[];
+  if (noneArr.length !== 0) {
+    throw new Error(`AND 语义: 缺失关键词应 0 命中, 实际 ${noneArr.length}`);
+  }
+  console.log("  缺失词零命中");
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
