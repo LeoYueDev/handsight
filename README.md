@@ -66,19 +66,17 @@ npm run build
 
 | 工具名 | 说明 | 必需参数 |
 |--------|------|----------|
-| 工具名 | 说明 | 必需参数 |
-|--------|------|----------|
 | `record_conversation` | 记录用户与 AI 的对话内容 | `role`, `content` |
 | `batch_record_conversations` | 批量记录多条对话内容 | `messages` |
 | `start_file_watching` | 开始监控指定目录的文件变化 | `path` |
 | `stop_file_watching` | 停止文件监控 | 无 |
 | `get_user_context` | 获取当前用户画像和上下文 | 无 |
-| `get_memories` | 查询已存储的记忆（支持类型过滤） | 无 |
+| `get_memories` | 查询已存储的记忆（支持类型/置信度过滤与 offset 分页） | 无 |
 | `get_memory_by_id` | 根据 ID 获取单条记忆详情 | `id` |
 | `add_memory` | 手动添加一条记忆 | `type`, `content` |
 | `update_memory` | 更新记忆的内容、置信度或类型 | `id` |
 | `delete_memory` | 按 ID 删除指定记忆 | `id` |
-| `search_memories` | 按关键词搜索记忆内容 | `query` |
+| `search_memories` | 按关键词搜索记忆（空格分词 AND、相关度排序、分页与置信度过滤） | `query` |
 | `get_recent_conversations` | 获取最近记录的对话内容 | 无 |
 | `get_file_events` | 获取最近的文件变更事件 | 无 |
 | `list_projects` | 列出所有有数据的项目及记录数量 | 无 |
