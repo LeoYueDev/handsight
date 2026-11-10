@@ -22,6 +22,8 @@ async function main() {
   const client = new Client({ name: "test-client", version: "1.0.0" });
   await client.connect(transport);
 
+  const testStartTs = Date.now();
+
   const tools = await client.listTools();
   console.log("=== Available Tools ===");
   for (const tool of tools.tools) {
@@ -394,6 +396,16 @@ async function main() {
     throw new Error(`AND 语义: 缺失关键词应 0 命中, 实际 ${noneArr.length}`);
   }
   console.log("  缺失词零命中");
+
+  console.log("\n=== Test: list_projects 包含 lastActive ===");
+  const lpRes = await client.callTool({ name: "list_projects", arguments: {} });
+  const lp = JSON.parse((lpRes.content as any)[0].text) as any[];
+  const testProj = lp.find((p) => p.project === "test");
+  if (!testProj) throw new Error("list_projects 未返回 test 项目");
+  if (typeof testProj.lastActive !== "number" || testProj.lastActive < testStartTs) {
+    throw new Error(`lastActive 异常: ${JSON.stringify(testProj.lastActive)}`);
+  }
+  console.log(`  test 项目 lastActive=${testProj.lastActive}`);
 
   await client.close();
   console.log("\n=== All tests passed! ===");

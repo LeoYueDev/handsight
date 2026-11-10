@@ -79,7 +79,7 @@ npm run build
 | `search_memories` | 按关键词搜索记忆（空格分词 AND、相关度排序、分页与置信度过滤） | `query` |
 | `get_recent_conversations` | 获取最近记录的对话内容 | 无 |
 | `get_file_events` | 获取最近的文件变更事件 | 无 |
-| `list_projects` | 列出所有有数据的项目及记录数量 | 无 |
+| `list_projects` | 列出所有有数据的项目、记录数量及最后活跃时间 | 无 |
 | `refresh_profile` | 基于最新数据刷新用户画像 | 无 |
 | `get_stats` | 获取数据库统计信息 | 无 |
 | `export_data` | 导出全部数据为 JSON（支持类型过滤和分页） | 无 |

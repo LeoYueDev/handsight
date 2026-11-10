@@ -605,28 +605,32 @@ export class Store {
     conversations: number;
     fileEvents: number;
     memories: number;
+    lastActive: number;
   }[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
 
-    const map = new Map<string, { conversations: number; fileEvents: number; memories: number }>();
+    const map = new Map<string, { conversations: number; fileEvents: number; memories: number; lastActive: number }>();
     const ensure = (p: string | null) => {
       const key = p || "__global__";
       if (!map.has(key)) {
-        map.set(key, { conversations: 0, fileEvents: 0, memories: 0 });
+        map.set(key, { conversations: 0, fileEvents: 0, memories: 0, lastActive: 0 });
       }
       return map.get(key)!;
     };
 
     const aggregate = (table: "conversations" | "file_events" | "memories", field: "conversations" | "fileEvents" | "memories") => {
       const rows = this.db!.exec(
-        `SELECT project, COUNT(*) as c FROM ${table} GROUP BY project`
+        `SELECT project, COUNT(*) as c, MAX(timestamp) as m FROM ${table} GROUP BY project`
       );
       for (const row of rows) {
         for (const v of row.values) {
           const proj = (v[0] as string | null) || null;
           const count = (v[1] as number) ?? 0;
-          ensure(proj)[field] = count;
+          const maxTs = (v[2] as number) ?? 0;
+          const entry = ensure(proj);
+          entry[field] = count;
+          entry.lastActive = Math.max(entry.lastActive, maxTs);
         }
       }
     };
