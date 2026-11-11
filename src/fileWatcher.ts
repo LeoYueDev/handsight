@@ -17,6 +17,14 @@ export class FileWatcher {
     this.project = project;
   }
 
+  getProject(): string | undefined {
+    return this.project;
+  }
+
+  setProject(project?: string): void {
+    this.project = project;
+  }
+
   start() {
     this.watcher = chokidar.watch(this.watchPath, {
       ignored: [

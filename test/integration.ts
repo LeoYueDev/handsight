@@ -407,6 +407,36 @@ async function main() {
   }
   console.log(`  test 项目 lastActive=${testProj.lastActive}`);
 
+  console.log("\n=== Test: 重复 start_file_watching 换 project 应重新绑定 ===");
+  const rebindDir = path.join(testDir, "watch-rebind");
+  fs.mkdirSync(rebindDir, { recursive: true });
+  const rStart = await client.callTool({ name: "start_file_watching", arguments: { path: rebindDir, project: "rebind-a" } });
+  console.log("  ", (rStart.content as any)[0].text);
+  fs.writeFileSync(path.join(rebindDir, "a.txt"), "1");
+  await new Promise((r) => setTimeout(r, 1500));
+
+  const rAgain = await client.callTool({ name: "start_file_watching", arguments: { path: rebindDir, project: "rebind-b" } });
+  const againText = (rAgain.content as any)[0].text;
+  console.log("  ", againText);
+  if (!againText.includes("rebind-b")) {
+    throw new Error(`换绑未回执新 project: ${againText}`);
+  }
+
+  fs.writeFileSync(path.join(rebindDir, "b.txt"), "2");
+  await new Promise((r) => setTimeout(r, 1500));
+  const evB = await client.callTool({ name: "get_file_events", arguments: { project: "rebind-b", limit: 50 } });
+  const evA = await client.callTool({ name: "get_file_events", arguments: { project: "rebind-a", limit: 50 } });
+  const listB = JSON.parse((evB.content as any)[0].text) as any[];
+  const listA = JSON.parse((evA.content as any)[0].text) as any[];
+  if (!listB.some((e) => String(e.path).endsWith("b.txt"))) {
+    throw new Error(`换绑后新事件未记入 rebind-b: B=${JSON.stringify(listB.map((e) => e.path))}`);
+  }
+  if (listA.some((e) => String(e.path).endsWith("b.txt"))) {
+    throw new Error(`换绑后新事件仍记入旧项目 rebind-a`);
+  }
+  await client.callTool({ name: "stop_file_watching", arguments: {} });
+  console.log(`  换绑生效: rebind-b ${listB.length} 条, rebind-a ${listA.length} 条`);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

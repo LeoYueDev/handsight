@@ -602,7 +602,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`Invalid path: not a directory: ${watchPath}`);
       }
       const resolved = path.resolve(watchPath);
-      if (fileWatchers.has(resolved)) {
+      const existing = fileWatchers.get(resolved);
+      if (existing) {
+        if (existing.getProject() !== project) {
+          existing.setProject(project);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `目录已在监控中: ${resolved}，项目已改绑为 ${project ?? "全局"}`,
+              },
+            ],
+          };
+        }
         return {
           content: [
             {
