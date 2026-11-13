@@ -84,7 +84,7 @@ npm run build
 | `get_stats` | 获取数据库统计信息 | 无 |
 | `export_data` | 导出全部数据为 JSON（支持类型过滤和分页） | 无 |
 | `clear_old_data` | 清理指定天数之前的历史数据 | `olderThanDays` |
-| `health_check` | 检查服务器运行状态 | 无 |
+| `health_check` | 检查服务器运行状态（含监控目录及其绑定项目） | 无 |
 
 ### 记忆类型
 

@@ -437,6 +437,22 @@ async function main() {
   await client.callTool({ name: "stop_file_watching", arguments: {} });
   console.log(`  换绑生效: rebind-b ${listB.length} 条, rebind-a ${listA.length} 条`);
 
+  console.log("\n=== Test: health_check 列出监控目录与绑定项目 ===");
+  const hcStop = await client.callTool({ name: "health_check", arguments: {} });
+  const hcStopData = JSON.parse((hcStop.content as any)[0].text);
+  if (!Array.isArray(hcStopData.watchedDirectories) || hcStopData.watchedDirectories.length !== 0) {
+    throw new Error(`停止全部监控后 watchedDirectories 应为空数组, 实际 ${JSON.stringify(hcStopData.watchedDirectories)}`);
+  }
+  await client.callTool({ name: "start_file_watching", arguments: { path: rebindDir, project: "hc-proj" } });
+  const hc = await client.callTool({ name: "health_check", arguments: {} });
+  const hcData = JSON.parse((hc.content as any)[0].text);
+  const entry = (hcData.watchedDirectories as any[])?.find((d) => String(d.path).endsWith("watch-rebind"));
+  if (!entry || entry.project !== "hc-proj") {
+    throw new Error(`health_check 未报告监控绑定: ${JSON.stringify(hcData.watchedDirectories)}`);
+  }
+  await client.callTool({ name: "stop_file_watching", arguments: {} });
+  console.log(`  watchedDirectories: ${JSON.stringify(entry)}`);
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   

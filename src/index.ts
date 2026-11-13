@@ -1007,6 +1007,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         version: HINDSIGHT_VERSION,
         uptimeSeconds,
         fileWatching: fileWatchers.size > 0 ? `${fileWatchers.size} active` : "inactive",
+        watchedDirectories: [...fileWatchers.entries()].map(([dir, watcher]) => ({
+          path: dir,
+          project: watcher.getProject() ?? null,
+        })),
         retentionDays: store.retentionDays,
         maxFileEvents: store.maxFileEvents,
         maxConversations: store.maxConversations,
