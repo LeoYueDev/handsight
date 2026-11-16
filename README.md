@@ -77,8 +77,8 @@ npm run build
 | `update_memory` | 更新记忆的内容、置信度或类型 | `id` |
 | `delete_memory` | 按 ID 删除指定记忆 | `id` |
 | `search_memories` | 按关键词搜索记忆（空格分词 AND、相关度排序、分页与置信度过滤） | `query` |
-| `get_recent_conversations` | 获取最近记录的对话内容 | 无 |
-| `get_file_events` | 获取最近的文件变更事件 | 无 |
+| `get_recent_conversations` | 获取最近记录的对话内容（支持 offset 分页） | 无 |
+| `get_file_events` | 获取最近的文件变更事件（支持 offset 分页） | 无 |
 | `list_projects` | 列出所有有数据的项目、记录数量及最后活跃时间 | 无 |
 | `refresh_profile` | 基于最新数据刷新用户画像 | 无 |
 | `get_stats` | 获取数据库统计信息 | 无 |

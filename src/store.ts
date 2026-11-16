@@ -419,7 +419,7 @@ export class Store {
     return results;
   }
 
-  async getRecentConversations(limit: number = 20, project?: string): Promise<ConversationEvent[]> {
+  async getRecentConversations(limit: number = 20, project?: string, offset: number = 0): Promise<ConversationEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
 
@@ -429,8 +429,8 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp DESC LIMIT ?";
-    params.push(limit);
+    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
     stmt.bind(params);
@@ -468,7 +468,7 @@ export class Store {
     return results;
   }
 
-  async getRecentFileEvents(limit: number = 100, project?: string): Promise<FileEvent[]> {
+  async getRecentFileEvents(limit: number = 100, project?: string, offset: number = 0): Promise<FileEvent[]> {
     await this.initPromise;
     if (!this.db) throw new Error("Database not initialized");
     
@@ -478,8 +478,8 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp DESC LIMIT ?";
-    params.push(limit);
+    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
     
     const stmt = this.db.prepare(sql);
     stmt.bind(params);

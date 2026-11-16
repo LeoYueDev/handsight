@@ -62,11 +62,13 @@ interface ProjectArgs {
 interface GetRecentConversationsArgs {
   limit?: number;
   project?: string;
+  offset?: number;
 }
 
 interface GetFileEventsArgs {
   limit?: number;
   project?: string;
+  offset?: number;
 }
 
 interface DeleteMemoryArgs {
@@ -368,13 +370,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_recent_conversations",
-        description: "获取最近记录的对话内容",
+        description: "获取最近记录的对话内容，支持 offset 分页",
         inputSchema: {
           type: "object",
           properties: {
             limit: {
               type: "number",
               description: "返回条数（默认 20）",
+            },
+            offset: {
+              type: "number",
+              description: "分页偏移量（默认 0）",
             },
             project: {
               type: "string",
@@ -385,13 +391,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_file_events",
-        description: "获取最近的文件变更事件（创建/修改/删除）",
+        description: "获取最近的文件变更事件（创建/修改/删除），支持 offset 分页",
         inputSchema: {
           type: "object",
           properties: {
             limit: {
               type: "number",
               description: "返回条数（默认 100）",
+            },
+            offset: {
+              type: "number",
+              description: "分页偏移量（默认 0）",
             },
             project: {
               type: "string",
@@ -402,7 +412,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_projects",
-        description: "列出所有有数据记录的项目及各项目的记录数量（project 为 null 表示全局数据）",
+        description: "列出所有有数据记录的项目的记录数量与最后活跃时间（project 为 null 表示全局数据）",
         inputSchema: {
           type: "object",
           properties: {},
@@ -872,12 +882,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "get_recent_conversations": {
-      const { limit = 20, project } = (args as GetRecentConversationsArgs) || {};
+      const { limit = 20, project, offset = 0 } = (args as GetRecentConversationsArgs) || {};
       assertProjectType(project);
       if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
-      const conversations = await store.getRecentConversations(limit, project);
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw new Error("Invalid offset: must be >= 0");
+      }
+      const conversations = await store.getRecentConversations(limit, project, offset);
       return {
         content: [
           {
@@ -889,12 +902,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "get_file_events": {
-      const { limit = 100, project } = (args as GetFileEventsArgs) || {};
+      const { limit = 100, project, offset = 0 } = (args as GetFileEventsArgs) || {};
       assertProjectType(project);
       if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
         throw new Error("Invalid limit: must be between 1 and 1000");
       }
-      const fileEvents = await store.getRecentFileEvents(limit, project);
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw new Error("Invalid offset: must be >= 0");
+      }
+      const fileEvents = await store.getRecentFileEvents(limit, project, offset);
       return {
         content: [
           {

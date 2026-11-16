@@ -453,6 +453,45 @@ async function main() {
   await client.callTool({ name: "stop_file_watching", arguments: {} });
   console.log(`  watchedDirectories: ${JSON.stringify(entry)}`);
 
+  console.log("\n=== Test: get_recent_conversations / get_file_events 支持 offset ===");
+  const cpProj = "conv-page";
+  for (let i = 0; i < 5; i++) {
+    await client.callTool({ name: "record_conversation", arguments: { role: "user", content: `cp-${i}`, project: cpProj } });
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  const cp1 = JSON.parse(((await client.callTool({ name: "get_recent_conversations", arguments: { project: cpProj, limit: 2, offset: 0 } })).content as any)[0].text) as any[];
+  const cp2 = JSON.parse(((await client.callTool({ name: "get_recent_conversations", arguments: { project: cpProj, limit: 2, offset: 2 } })).content as any)[0].text) as any[];
+  const cp3 = JSON.parse(((await client.callTool({ name: "get_recent_conversations", arguments: { project: cpProj, limit: 2, offset: 4 } })).content as any)[0].text) as any[];
+  if (cp1.length !== 2 || cp2.length !== 2 || cp3.length !== 1) {
+    throw new Error(`conv 分页条数错误: ${cp1.length}/${cp2.length}/${cp3.length} (期望 2/2/1)`);
+  }
+  const cpIds = new Set([...cp1, ...cp2].map((c) => c.id));
+  if (cp2.some((c) => new Set(cp1.map((x) => x.id)).has(c.id)) || cp3.some((c) => cpIds.has(c.id))) {
+    throw new Error("conv 分页存在重叠, offset 未生效");
+  }
+  if (!cp3.some((c) => c.content === "cp-0")) {
+    throw new Error(`最后一页应为最早记录 cp-0: ${cp3.map((c) => c.content).join(",")}`);
+  }
+  console.log("  get_recent_conversations 分页 2/2/1 无重叠");
+
+  const feEmpty = JSON.parse(((await client.callTool({ name: "get_file_events", arguments: { project: "watch-test", limit: 2, offset: 999 } })).content as any)[0].text) as any[];
+  if (feEmpty.length !== 0) {
+    throw new Error(`file events 大 offset 应返回空, 实际 ${feEmpty.length}`);
+  }
+  console.log("  get_file_events offset=999 返回空");
+
+  for (const tool of ["get_recent_conversations", "get_file_events"]) {
+    let badRejected = false;
+    try {
+      const res = await client.callTool({ name: tool, arguments: { project: cpProj, offset: 1.5 } });
+      badRejected = Boolean(res.isError) && ((res.content as any)[0]?.text ?? "").includes("Invalid offset");
+    } catch (err) {
+      badRejected = (err as Error).message.includes("Invalid offset");
+    }
+    if (!badRejected) throw new Error(`${tool}: 非法 offset 未被拒绝`);
+    console.log(`  ${tool} offset=1.5: 已拒绝`);
+  }
+
   await client.close();
   console.log("\n=== All tests passed! ===");
   
