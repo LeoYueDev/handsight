@@ -233,7 +233,11 @@ export class Store {
     if (this.dirty && this.db) {
       const data = this.db.export();
       const buffer = Buffer.from(data);
-      fs.writeFileSync(this.dbPath, buffer);
+      // 原子写：先写临时文件再 rename 替换，避免写入中断导致 DB 损坏。
+      // 失败时 dirty 保持 true，残留的 .tmp 会在下次保存时被覆盖。
+      const tmpPath = this.dbPath + ".tmp";
+      fs.writeFileSync(tmpPath, buffer);
+      fs.renameSync(tmpPath, this.dbPath);
       this.dirty = false;
     }
   }
