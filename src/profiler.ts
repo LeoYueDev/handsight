@@ -43,6 +43,10 @@ export class Profiler {
     return `cursor:file:${projectKey}`;
   }
 
+  static projectDirKey(project: string): string {
+    return `projectDir:${project}`;
+  }
+
   private async ensureCursorsLoaded(projectKey: string): Promise<void> {
     if (this.cursorsLoaded.has(projectKey)) return;
     const [conv, file] = await Promise.all([
@@ -90,7 +94,7 @@ export class Profiler {
     const profile = await this.buildProfile(project);
     this.cachedProfiles.set(key, profile);
     this.lastRefresh.set(key, Date.now());
-    await this.updateAgentsMd(profile);
+    await this.updateAgentsMd(profile, project);
   }
 
   /**
@@ -117,16 +121,28 @@ export class Profiler {
     this.pendingRefresh.clear();
   }
 
-  private async updateAgentsMd(profile: UserProfile): Promise<void> {
-    const configDir = process.env.HINDSIGHT_CONFIG_DIR || path.join(os.homedir(), ".config", "opencode");
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
+  /**
+   * 写入画像：全局画像写全局 AGENTS.md；项目画像写项目目录下的 AGENTS.md，
+   * 项目目录来自 start_file_watching 持久化的 project→dir 映射。
+   * 未绑定目录的项目跳过文件写入（画像仍可通过 get_user_context 获取）。
+   */
+  private async updateAgentsMd(profile: UserProfile, project?: string): Promise<void> {
+    let targetPath: string;
+    if (project) {
+      const projectDir = await this.store.getMeta(Profiler.projectDirKey(project));
+      if (!projectDir || !fs.existsSync(projectDir)) return;
+      targetPath = path.join(projectDir, "AGENTS.md");
+    } else {
+      const configDir = process.env.HINDSIGHT_CONFIG_DIR || path.join(os.homedir(), ".config", "opencode");
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      targetPath = path.join(configDir, "AGENTS.md");
     }
-    const agentsMdPath = path.join(configDir, "AGENTS.md");
 
     let existingContent = "";
-    if (fs.existsSync(agentsMdPath)) {
-      existingContent = fs.readFileSync(agentsMdPath, "utf-8");
+    if (fs.existsSync(targetPath)) {
+      existingContent = fs.readFileSync(targetPath, "utf-8");
     }
 
     let hindsightSection = `\n\n<!-- HINDSIGHT_START -->\n`;
@@ -177,7 +193,7 @@ export class Profiler {
       ? cleanedContent + hindsightSection
       : hindsightSection.trimStart();
 
-    fs.writeFileSync(agentsMdPath, finalContent);
+    fs.writeFileSync(targetPath, finalContent);
   }
 
   private async buildProfile(project?: string): Promise<UserProfile> {

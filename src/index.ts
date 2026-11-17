@@ -616,6 +616,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (existing) {
         if (existing.getProject() !== project) {
           existing.setProject(project);
+          if (project) {
+            await store.setMeta(Profiler.projectDirKey(project), resolved);
+          }
           return {
             content: [
               {
@@ -637,6 +640,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const watcher = new FileWatcher(resolved, store, project);
       watcher.start();
       fileWatchers.set(resolved, watcher);
+      if (project) {
+        await store.setMeta(Profiler.projectDirKey(project), resolved);
+      }
       return {
         content: [
           {
@@ -800,8 +806,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (typeof id !== 'number') {
         throw new Error("Invalid id: must be a number");
       }
+      const existingMemory = await store.getMemoryById(id);
       const deleted = await store.deleteMemory(id);
-      profiler.scheduleRefresh();
+      profiler.scheduleRefresh(existingMemory?.project);
       return {
         content: [
           {
@@ -834,7 +841,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       const updated = await store.updateMemory(id, { content, confidence, type });
       if (updated) {
-        profiler.scheduleRefresh();
+        const memory = await store.getMemoryById(id);
+        profiler.scheduleRefresh(memory?.project);
       }
       return {
         content: [

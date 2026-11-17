@@ -103,7 +103,7 @@ npm run build
 ## 数据存储
 
 - **数据库**：`~/.hindsight/hindsight.db`（SQLite，通过 sql.js 运行）
-- **用户画像**：`~/.config/opencode/AGENTS.md`（HINDSIGHT 标记区间自动更新）
+- **用户画像**：全局画像写入 `~/.config/opencode/AGENTS.md`；项目画像写入项目目录下的 `AGENTS.md`（项目目录取自 `start_file_watching` 的监控路径，未绑定目录的项目仅通过 `get_user_context` 提供）。均在 HINDSIGHT 标记区间自动更新
 - **自动清理**：过期记录（默认 30 天前）自动删除，并按条数上限截断最旧数据（对话 10,000 / 文件事件 10,000 / 记忆 5,000）
 - **自动保存**：数据库变更每 500ms 异步刷盘
 
