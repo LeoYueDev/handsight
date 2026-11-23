@@ -51,7 +51,8 @@ export class FileWatcher {
         "**/*~",
       ],
       persistent: true,
-      ignoreInitial: false,
+      // 不把监控启动时已存在的文件报成 create 事件, 避免灌满事件表、污染统计
+      ignoreInitial: true,
     });
 
     this.watcher
