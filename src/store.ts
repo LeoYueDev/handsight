@@ -9,6 +9,7 @@ const MAX_FILE_EVENTS = 10000;
 const MAX_CONVERSATIONS = 10000;
 const MAX_MEMORIES = 5000;
 const SAVE_DEBOUNCE_MS = 500;
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 export class Store {
   private db: Database | null = null;
@@ -17,6 +18,7 @@ export class Store {
   private initPromise: Promise<void>;
   private writeLock: Promise<void> = Promise.resolve();
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private dirty = false;
   readonly retentionDays: number;
   readonly maxFileEvents: number;
@@ -157,6 +159,11 @@ export class Store {
 
     this.scheduleSave();
     await this.cleanup();
+    // 长期运行的进程也按保留策略滚动清理（默认每小时一次）
+    this.cleanupTimer = setInterval(() => {
+      this.cleanup().catch((err) => console.error("Periodic cleanup failed:", err));
+    }, CLEANUP_INTERVAL_MS);
+    this.cleanupTimer.unref();
   }
 
   private migrateMemoriesTable() {
@@ -243,6 +250,10 @@ export class Store {
   }
 
   shutdown() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
     this.flushSave();
     if (this.db) {
       this.db.close();
