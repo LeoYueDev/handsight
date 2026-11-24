@@ -578,8 +578,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       const now = Date.now();
       const ids = await store.addConversations(
-        messages.map((m, i) => ({
-          timestamp: now + i,
+        messages.map((m) => ({
+          timestamp: now,
           role: m.role,
           content: m.content,
           project,

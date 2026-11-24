@@ -284,7 +284,8 @@ export class Store {
     const count = countResult[0]?.values[0][0] as number;
     if (count > maxRows) {
       const excess = count - maxRows;
-      this.db.run(`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} ORDER BY timestamp ASC LIMIT ?)`, [excess]);
+      // 按 id（插入顺序，单调）淘汰最旧记录, 避免同毫秒 timestamp 排序不稳定
+      this.db.run(`DELETE FROM ${table} WHERE id IN (SELECT id FROM ${table} ORDER BY id ASC LIMIT ?)`, [excess]);
     }
   }
 
@@ -444,7 +445,7 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
@@ -493,7 +494,7 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
     
     const stmt = this.db.prepare(sql);
@@ -691,7 +692,7 @@ export class Store {
     if (conditions.length > 0) {
       sql += " WHERE " + conditions.join(" AND ");
     }
-    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
     
     const stmt = this.db.prepare(sql);
@@ -758,7 +759,7 @@ export class Store {
       const sql = `SELECT id, timestamp, type, content, confidence, source, project FROM (
         SELECT *, ${scoreExpr} + confidence * 0.5 AS relevance
         FROM memories WHERE ${where}
-      ) ORDER BY relevance DESC, timestamp DESC LIMIT ? OFFSET ?`;
+      ) ORDER BY relevance DESC, id DESC LIMIT ? OFFSET ?`;
       const rp: BindParams = [];
       for (const t of terms) {
         rp.push(t, t);
@@ -778,7 +779,7 @@ export class Store {
 
     let sql = "SELECT * FROM memories";
     sql += " WHERE " + where;
-    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
+    sql += " ORDER BY id DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
@@ -801,7 +802,7 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp ASC";
+    sql += " ORDER BY id ASC";
     if (limit !== undefined) {
       sql += " LIMIT ? OFFSET ?";
       params.push(limit, offset ?? 0);
@@ -828,7 +829,7 @@ export class Store {
       sql += " WHERE project = ?";
       params.push(project);
     }
-    sql += " ORDER BY timestamp ASC";
+    sql += " ORDER BY id ASC";
     if (limit !== undefined) {
       sql += " LIMIT ? OFFSET ?";
       params.push(limit, offset ?? 0);
