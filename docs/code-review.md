@@ -61,14 +61,13 @@
 
 ### P3 — 一致性与健壮性细节
 
-- [ ] **7. 排序/分页按 timestamp 而非 id，同毫秒顺序不稳定**
+- [x] **7. 排序/分页按 timestamp 而非 id，同毫秒顺序不稳定**
   - 位置：`store.ts` 各查询；`index.ts:582` 批量写入 `now + i` 毫秒 hack
   - 方案：排序统一用 `id`（单调），去掉 `now + i` hack。
 
-- [ ] **8. 搜索相关度打分未做 LIKE 转义**
-  - 位置：`store.ts:741` scoreExpr
-  - 问题：term 没转义 `%`/`_`，与 WHERE 条件（已转义）行为不一致，含通配符的词计分错误。
-  - 方案：scoreExpr 中的 term 同样转义并加 ESCAPE。
+- [x] **8. 搜索相关度打分未做 LIKE 转义**（评审误判，复核后不修）
+  - 位置：`store.ts` searchMemories scoreExpr
+  - 复核结论（2026-11-24）：打分走的是 `replace()` 的**字面义替换**，不是 LIKE 模式匹配，`%`/`_` 在 `replace` 中没有特殊含义；若按原方案转义，反而会把 `\` 计入搜索词、导致命中次数算错。WHERE 用 LIKE（须转义）、打分用 replace（无须转义），两处语义本就一致。原代码正确。
 
 ### P4 — 核心价值与可维护性（较大改动，需先讨论方案）
 
@@ -97,3 +96,5 @@
 | 2026-11-19 | P2-3 | `updateAgentsMd` 改为原位替换 HINDSIGHT 标记区间（函数替换器防 `$&` 注入、重复区间只留第一个），用户内容不再 trim/重排；追加时保留原文并在末尾加区间；写入改为 `.tmp` + rename 原子替换 | 仅代码修改，未运行；测试未断言 AGENTS.md 内容，无已知破坏 |
 | 2026-11-23 | P2-5 | `fileWatcher.ts` `ignoreInitial` 改为 `true`，开始监控不再把存量文件记成 create 事件 | 仅代码修改，未运行；集成测试流程（先建空目录再监控再写文件）不受影响 |
 | 2026-11-23 | P2-6 | `store.ts` init 后启动每小时 `cleanup()` 定时器（`unref` 不阻止退出），`shutdown()` 清理定时器 | 仅代码修改，未运行 |
+| 2026-11-24 | P3-7 | `store.ts` 9 处 `ORDER BY timestamp` 改为 `ORDER BY id`（含 truncate 淘汰、search 次级排序）；`index.ts` 去掉批量写入 `now + i` 毫秒 hack | 仅代码修改，未运行；语义：id 单调递增即插入顺序 |
+| 2026-11-24 | P3-8 | **不修**：复核发现评审结论误判——打分用 `replace()` 字面义计数，`%`/`_` 无特殊含义，原实现正确；已按原方案改动后回滚 | `git diff` 确认 store.ts 该项无残留改动 |
