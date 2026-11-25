@@ -43,7 +43,7 @@
   - 问题：对用户手写内容做 `.trim()` 重排；`writeFileSync` 直接覆盖，崩溃可能截断用户配置文件。自动修改用户配置文件应更克制。
   - 方案：临时文件 + rename；保留用户内容原样，只替换 HINDSIGHT 标记区间。
 
-- [ ] **4. 对话原文明文存储，无脱敏**
+- [x] **4. 对话原文明文存储，无脱敏**
   - 位置：`store.ts` conversations 表
   - 问题：对话可能含密钥、内部代码，明文存家目录。
   - 方案：至少提供开关/文档说明；可选做常见 secret 模式脱敏。
@@ -98,3 +98,4 @@
 | 2026-11-23 | P2-6 | `store.ts` init 后启动每小时 `cleanup()` 定时器（`unref` 不阻止退出），`shutdown()` 清理定时器 | 仅代码修改，未运行 |
 | 2026-11-24 | P3-7 | `store.ts` 9 处 `ORDER BY timestamp` 改为 `ORDER BY id`（含 truncate 淘汰、search 次级排序）；`index.ts` 去掉批量写入 `now + i` 毫秒 hack | 仅代码修改，未运行；语义：id 单调递增即插入顺序 |
 | 2026-11-24 | P3-8 | **不修**：复核发现评审结论误判——打分用 `replace()` 字面义计数，`%`/`_` 无特殊含义，原实现正确；已按原方案改动后回滚 | `git diff` 确认 store.ts 该项无残留改动 |
+| 2026-11-25 | P2-4 | `store.ts` 新增 `redactSecrets()`（10 条正则：私钥块/AWS/GitHub/Slack/OpenAI/Google key、JWT、Bearer、通用 key=value），在 addConversation/addConversations/addMemory/replaceMemoryByPrefix/updateMemory 写入前脱敏；`HINDSIGHT_REDACT=0` 关闭；README 同步 | 未运行验证（按用户要求） |
