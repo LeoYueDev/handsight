@@ -11,6 +11,28 @@ const MAX_MEMORIES = 5000;
 const SAVE_DEBOUNCE_MS = 500;
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
+// 常见密钥/凭据模式, 按序替换。私有键块在前（跨行），通用 key=value 在后兜底。
+const REDACTION_RULES: [RegExp, string][] = [
+  [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[REDACTED:private_key]"],
+  [/\b(AKIA|ASIA)[0-9A-Z]{16}\b/g, "[REDACTED:aws_key]"],
+  [/\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, "[REDACTED:github_token]"],
+  [/\bgh[pousr]_[A-Za-z0-9]{36,}\b/g, "[REDACTED:github_token]"],
+  [/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, "[REDACTED:slack_token]"],
+  [/\bsk-[A-Za-z0-9_-]{20,}\b/g, "[REDACTED:api_key]"],
+  [/\bAIza[0-9A-Za-z_-]{35}\b/g, "[REDACTED:api_key]"],
+  [/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[REDACTED:jwt]"],
+  [/\bBearer\s+[A-Za-z0-9._~+\/-]{16,}=*/gi, "Bearer [REDACTED:token]"],
+  [/\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)\b(\s*[:=]\s*)["']?[^\s"',;]{6,}["']?/gi, "$1$2[REDACTED:credential]"],
+];
+
+export function redactSecrets(text: string): string {
+  let out = text;
+  for (const [re, to] of REDACTION_RULES) {
+    out = out.replace(re, to);
+  }
+  return out;
+}
+
 export class Store {
   private db: Database | null = null;
   private dbPath: string;
@@ -24,6 +46,7 @@ export class Store {
   readonly maxFileEvents: number;
   readonly maxConversations: number;
   readonly maxMemories: number;
+  readonly redact: boolean;
 
   constructor(projectDir?: string) {
     const dbDir = projectDir
@@ -50,6 +73,7 @@ export class Store {
     this.maxMemories = Number.isFinite(envMaxMem) && envMaxMem > 0
       ? Math.floor(envMaxMem)
       : MAX_MEMORIES;
+    this.redact = process.env.HINDSIGHT_REDACT !== "0";
     this.initPromise = this.init();
   }
 
@@ -289,6 +313,10 @@ export class Store {
     }
   }
 
+  private redactText(content: string): string {
+    return this.redact ? redactSecrets(content) : content;
+  }
+
   async addConversation(event: ConversationEvent): Promise<number> {
     await this.initPromise;
     return this.withLock(() => {
@@ -296,7 +324,7 @@ export class Store {
       
       this.db.run(
         "INSERT INTO conversations (timestamp, role, content, project) VALUES (?, ?, ?, ?)",
-        [event.timestamp, event.role, event.content, event.project || null]
+        [event.timestamp, event.role, this.redactText(event.content), event.project || null]
       );
       this.scheduleSave();
       
@@ -313,7 +341,7 @@ export class Store {
       for (const event of events) {
         this.db.run(
           "INSERT INTO conversations (timestamp, role, content, project) VALUES (?, ?, ?, ?)",
-          [event.timestamp, event.role, event.content, event.project || null]
+          [event.timestamp, event.role, this.redactText(event.content), event.project || null]
         );
         const result = this.db.exec("SELECT last_insert_rowid()");
         ids.push(result[0].values[0][0] as number);
@@ -344,13 +372,14 @@ export class Store {
     return this.withLock(() => {
       if (!this.db) throw new Error("Database not initialized");
 
+      const content = this.redactText(memory.content);
       const findExisting = (): number | null => {
         const sql = memory.project
           ? "SELECT id FROM memories WHERE content = ? AND project = ?"
           : "SELECT id FROM memories WHERE content = ? AND project IS NULL";
         const params: BindParams = memory.project
-          ? [memory.content, memory.project]
-          : [memory.content];
+          ? [content, memory.project]
+          : [content];
         const rows = this.db!.exec(sql, params);
         if (rows.length > 0 && rows[0].values.length > 0) {
           return rows[0].values[0][0] as number;
@@ -366,7 +395,7 @@ export class Store {
       try {
         this.db.run(
           "INSERT INTO memories (timestamp, type, content, confidence, source, project) VALUES (?, ?, ?, ?, ?, ?)",
-          [memory.timestamp, memory.type, memory.content, memory.confidence, memory.source, memory.project || null]
+          [memory.timestamp, memory.type, content, memory.confidence, memory.source, memory.project || null]
         );
         this.scheduleSave();
         
@@ -401,7 +430,7 @@ export class Store {
 
       this.db.run(
         "INSERT INTO memories (timestamp, type, content, confidence, source, project) VALUES (?, ?, ?, ?, ?, ?)",
-        [memory.timestamp, memory.type, memory.content, memory.confidence, memory.source, memory.project || null]
+        [memory.timestamp, memory.type, this.redactText(memory.content), memory.confidence, memory.source, memory.project || null]
       );
       this.scheduleSave();
 
@@ -535,7 +564,7 @@ export class Store {
       const params: BindParams = [];
       if (updates.content !== undefined) {
         sets.push("content = ?");
-        params.push(updates.content);
+        params.push(this.redactText(updates.content));
       }
       if (updates.confidence !== undefined) {
         sets.push("confidence = ?");

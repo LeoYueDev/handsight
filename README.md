@@ -9,6 +9,7 @@
 - **上下文感知**：新的 AI 会话启动时即可获取你的编码风格和项目历史
 - **多项目隔离**：每个项目独立存储记忆，同时支持全局用户偏好
 - **文件监控**：自动追踪文件的创建、修改和删除操作
+- **密钥脱敏**：对话与记忆写入时自动识别并替换常见密钥格式（AWS/GitHub/Slack/OpenAI key、JWT、私钥块、`password=` 等），可用 `HINDSIGHT_REDACT=0` 关闭
 
 ## 架构概览
 
@@ -117,6 +118,7 @@ npm run build
 | `HINDSIGHT_MAX_FILE_EVENTS` | 文件事件保留上限 | `10000` |
 | `HINDSIGHT_MAX_CONVERSATIONS` | 对话记录保留上限 | `10000` |
 | `HINDSIGHT_MAX_MEMORIES` | 记忆保留上限 | `5000` |
+| `HINDSIGHT_REDACT` | 写入时脱敏常见密钥（设为 `0` 关闭） | 开启 |
 
 ## 开发
 
